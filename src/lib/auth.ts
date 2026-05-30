@@ -2,6 +2,7 @@ import bcrypt from "bcryptjs";
 import type { NextAuthOptions } from "next-auth";
 import CredentialsProvider from "next-auth/providers/credentials";
 
+import { ADMIN_USER_ID } from "@/lib/constants";
 import { prisma } from "@/lib/prisma";
 import { loginSchema } from "@/lib/validation";
 
@@ -28,10 +29,10 @@ export const authOptions: NextAuthOptions = {
         }
 
         const user = await prisma.user.findUnique({
-          where: { email: parsed.data.email },
+          where: { id: ADMIN_USER_ID },
         });
 
-        if (!user || user.role !== "ADMIN") {
+        if (!user || user.role !== "ADMIN" || user.email !== parsed.data.email) {
           return null;
         }
 

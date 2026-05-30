@@ -2,7 +2,7 @@ import bcrypt from "bcryptjs";
 import { PrismaPg } from "@prisma/adapter-pg";
 
 import { PrismaClient } from "../src/generated/prisma/client.ts";
-import { DEFAULT_SITE_SETTINGS, SITE_SETTINGS_ID } from "../src/lib/constants.ts";
+import { ADMIN_USER_ID, DEFAULT_SITE_SETTINGS, SITE_SETTINGS_ID } from "../src/lib/constants.ts";
 import { createExcerpt, estimateReadingMinutes, toSlug } from "../src/lib/text.ts";
 
 const prisma = new PrismaClient({
@@ -67,10 +67,15 @@ async function main() {
   const password = getRequiredEnv("ADMIN_PASSWORD");
   const passwordHash = await bcrypt.hash(password, HASH_ROUNDS);
 
+  await prisma.user.deleteMany({
+    where: {
+      id: { not: ADMIN_USER_ID },
+    },
+  });
   await prisma.user.upsert({
-    where: { email },
-    update: { passwordHash },
-    create: { email, passwordHash, name: "Prelog Admin" },
+    where: { id: ADMIN_USER_ID },
+    update: { email, passwordHash, role: "ADMIN" },
+    create: { id: ADMIN_USER_ID, email, passwordHash, name: "Prelog Admin", role: "ADMIN" },
   });
   await prisma.siteSettings.upsert({
     where: { id: SITE_SETTINGS_ID },

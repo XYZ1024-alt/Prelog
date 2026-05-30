@@ -23,7 +23,7 @@ export function LoginForm() {
       return;
     }
 
-    router.push(searchParams.get("callbackUrl") ?? "/admin/posts");
+    router.push(searchParams.get("callbackUrl") ?? "/admin");
     router.refresh();
   }
 

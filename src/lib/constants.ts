@@ -7,6 +7,7 @@ export const MAX_EXCERPT_LENGTH = 180;
 export const POST_PAGE_SIZE = 12;
 export const PUBLIC_POST_SELECT_LIMIT = 24;
 export const SITE_SETTINGS_ID = "default";
+export const ADMIN_USER_ID = "admin";
 export const DEFAULT_SITE_SETTINGS = {
   aboutAudience: "给正在做 Web 项目、折腾 AI 工具、关注产品细节，或者希望从实际项目里理解技术选择的人看。",
   aboutIntro: "这里写 Web 开发、AI 工具、产品思考和项目实践，也记录一些把事情想清楚之后留下来的判断。",

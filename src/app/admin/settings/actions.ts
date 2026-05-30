@@ -4,7 +4,7 @@ import bcrypt from "bcryptjs";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 
-import { SITE_SETTINGS_ID } from "@/lib/constants";
+import { ADMIN_USER_ID, SITE_SETTINGS_ID } from "@/lib/constants";
 import { prisma } from "@/lib/prisma";
 import { requireAdmin } from "@/lib/session";
 import { adminProfileSchema, siteSettingsSchema } from "@/lib/validation";
@@ -12,7 +12,7 @@ import { adminProfileSchema, siteSettingsSchema } from "@/lib/validation";
 const HASH_ROUNDS = 12;
 
 export async function updateAdminProfile(formData: FormData) {
-  const { user } = await requireAdmin();
+  await requireAdmin();
   const parsed = adminProfileSchema.parse({
     email: formData.get("email"),
     name: formData.get("name"),
@@ -22,7 +22,7 @@ export async function updateAdminProfile(formData: FormData) {
   });
 
   const currentUser = await prisma.user.findUniqueOrThrow({
-    where: { id: user.id },
+    where: { id: ADMIN_USER_ID },
   });
   const validPassword = await bcrypt.compare(parsed.currentPassword, currentUser.passwordHash);
 

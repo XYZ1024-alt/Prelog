@@ -1,10 +1,20 @@
 import { Suspense } from "react";
+import { getServerSession } from "next-auth";
+import { redirect } from "next/navigation";
 
 import { LoginForm } from "@/app/admin/login/login-form";
+import { authOptions } from "@/lib/auth";
+import { ADMIN_USER_ID } from "@/lib/constants";
 
 export const dynamic = "force-dynamic";
 
-export default function LoginPage() {
+export default async function LoginPage() {
+  const session = await getServerSession(authOptions);
+
+  if (session?.user?.id === ADMIN_USER_ID) {
+    redirect("/admin");
+  }
+
   return (
     <main className="admin-login">
       <section className="admin-login__panel">

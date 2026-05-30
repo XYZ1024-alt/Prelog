@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { FileText, FolderTree, LayoutDashboard, LogOut, MessageSquare, Settings } from "lucide-react";
+import { FileText, FolderTree, Hash, LayoutDashboard, LogOut, MessageSquare, Settings } from "lucide-react";
 import { usePathname } from "next/navigation";
 
 import { SignOutButton } from "@/app/admin/sign-out-button";
@@ -10,6 +10,7 @@ const ADMIN_LINKS = [
   { href: "/admin", label: "后台概览", icon: LayoutDashboard },
   { href: "/admin/posts", label: "文章管理", icon: FileText },
   { href: "/admin/categories", label: "分类管理", icon: FolderTree },
+  { href: "/admin/tags", label: "标签概览", icon: Hash },
   { href: "/admin/comments", label: "评论管理", icon: MessageSquare },
   { href: "/admin/settings", label: "管理员设置", icon: Settings },
 ] as const;
