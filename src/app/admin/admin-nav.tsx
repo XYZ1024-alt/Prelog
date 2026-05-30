@@ -5,14 +5,15 @@ import { FileText, FolderTree, Hash, LayoutDashboard, LogOut, MessageSquare, Set
 import { usePathname } from "next/navigation";
 
 import { SignOutButton } from "@/app/admin/sign-out-button";
+import { PUBLIC_ADMIN_PATH, toAdminPath } from "@/lib/admin-path";
 
 const ADMIN_LINKS = [
-  { href: "/admin", label: "后台概览", icon: LayoutDashboard },
-  { href: "/admin/posts", label: "文章管理", icon: FileText },
-  { href: "/admin/categories", label: "分类管理", icon: FolderTree },
-  { href: "/admin/tags", label: "标签概览", icon: Hash },
-  { href: "/admin/comments", label: "评论管理", icon: MessageSquare },
-  { href: "/admin/settings", label: "管理员设置", icon: Settings },
+  { href: toAdminPath(), label: "后台概览", icon: LayoutDashboard },
+  { href: toAdminPath("/posts"), label: "文章管理", icon: FileText },
+  { href: toAdminPath("/categories"), label: "分类管理", icon: FolderTree },
+  { href: toAdminPath("/tags"), label: "标签概览", icon: Hash },
+  { href: toAdminPath("/comments"), label: "评论管理", icon: MessageSquare },
+  { href: toAdminPath("/settings"), label: "管理员设置", icon: Settings },
 ] as const;
 
 export function AdminNav() {
@@ -23,7 +24,7 @@ export function AdminNav() {
       <div className="admin-nav__group">
         {ADMIN_LINKS.map((item) => {
           const Icon = item.icon;
-          const active = pathname === item.href || pathname.startsWith(`${item.href}/`);
+          const active = pathname === item.href || pathname.startsWith(`${item.href}/`) || pathname === item.href.replace(PUBLIC_ADMIN_PATH, "/admin") || pathname.startsWith(`${item.href.replace(PUBLIC_ADMIN_PATH, "/admin")}/`);
 
           return (
             <Link aria-current={active ? "page" : undefined} data-active={active} href={item.href} key={item.href}>

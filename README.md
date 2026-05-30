@@ -39,9 +39,12 @@ Copy `.env.example` to `.env` and fill in at least:
 DATABASE_URL=
 AUTH_SECRET=
 NEXTAUTH_URL=http://127.0.0.1:3000
+ADMIN_PATH=/admin
 ADMIN_EMAIL=
 ADMIN_PASSWORD=
 ```
+
+`ADMIN_PATH` 用来配置后台入口别名，例如 `/studio-x9`。应用内部仍然使用 `/admin` 路由结构，但对外只暴露你配置的路径。
 
 ### 3. Generate Prisma client
 

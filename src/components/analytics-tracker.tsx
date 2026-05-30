@@ -3,8 +3,10 @@
 import { useEffect } from "react";
 import { usePathname, useSearchParams } from "next/navigation";
 
+import { PUBLIC_ADMIN_PATH } from "@/lib/admin-path";
+
 const ANALYTICS_ENDPOINT = "/api/analytics";
-const EXCLUDED_PREFIXES = ["/admin", "/api"] as const;
+const EXCLUDED_PREFIXES = Array.from(new Set([PUBLIC_ADMIN_PATH, "/admin", "/api"]));
 
 export function AnalyticsTracker() {
   const pathname = usePathname();

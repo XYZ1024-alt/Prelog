@@ -4,6 +4,7 @@ import bcrypt from "bcryptjs";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 
+import { toAdminPath } from "@/lib/admin-path";
 import { ADMIN_USER_ID, SITE_SETTINGS_ID } from "@/lib/constants";
 import { prisma } from "@/lib/prisma";
 import { requireAdmin } from "@/lib/session";
@@ -27,14 +28,14 @@ export async function updateAdminProfile(formData: FormData) {
   const validPassword = await bcrypt.compare(parsed.currentPassword, currentUser.passwordHash);
 
   if (!validPassword) {
-    redirect("/admin/settings?error=password");
+    redirect(toAdminPath("/settings?error=password"));
   }
 
   if (parsed.email !== currentUser.email) {
     const duplicated = await prisma.user.findUnique({ where: { email: parsed.email } });
 
     if (duplicated && duplicated.id !== currentUser.id) {
-      redirect("/admin/settings?error=email");
+      redirect(toAdminPath("/settings?error=email"));
     }
   }
 
@@ -53,7 +54,7 @@ export async function updateAdminProfile(formData: FormData) {
 
   revalidatePath("/admin");
   revalidatePath("/admin/settings");
-  redirect("/admin/settings?updated=1");
+  redirect(toAdminPath("/settings?updated=1"));
 }
 
 export async function updateSiteSettings(formData: FormData) {
@@ -83,5 +84,5 @@ export async function updateSiteSettings(formData: FormData) {
   revalidatePath("/search");
   revalidatePath("/admin");
   revalidatePath("/admin/settings");
-  redirect("/admin/settings?updated=site");
+  redirect(toAdminPath("/settings?updated=site"));
 }

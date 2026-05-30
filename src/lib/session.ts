@@ -1,15 +1,16 @@
 import { getServerSession } from "next-auth";
 import { redirect } from "next/navigation";
 
+import { toAdminPath } from "@/lib/admin-path";
 import { authOptions } from "@/lib/auth";
 import { ADMIN_USER_ID } from "@/lib/constants";
 import { prisma } from "@/lib/prisma";
 
 export async function requireAdmin() {
-  const session = await getServerSession(authOptions);
+  const session = await getSafeServerSession();
 
   if (!session?.user?.id || session.user.id !== ADMIN_USER_ID) {
-    redirect("/admin/login");
+    redirect(toAdminPath("/login"));
   }
 
   const user = await prisma.user.findUnique({
@@ -18,8 +19,16 @@ export async function requireAdmin() {
   });
 
   if (!user || user.role !== "ADMIN") {
-    redirect("/admin/login");
+    redirect(toAdminPath("/login"));
   }
 
   return { session, user };
+}
+
+export async function getSafeServerSession() {
+  try {
+    return await getServerSession(authOptions);
+  } catch {
+    return null;
+  }
 }

@@ -6,11 +6,11 @@ import { layout, prepare } from "@chenglou/pretext";
 
 import { DynamicArticleLayout } from "@/components/dynamic-article-layout";
 import { useClientMounted } from "@/components/use-client-mounted";
+import { getDraftLoadState, getDraftSaveState, type DraftState } from "@/lib/draft-logic";
 import { analyzeEditorial, type EditorialReport } from "@/lib/editorial-engine";
 import { estimateReadingMinutes, plainTextFromMarkdown } from "@/lib/text";
 
 type EditorMode = "write" | "preview";
-type DraftState = { readonly savedAt: number; readonly value: string };
 
 const BODY_FONT = '16px "SFMono-Regular", Consolas, monospace';
 const BODY_LINE_HEIGHT = 26;
@@ -20,6 +20,7 @@ const EDITOR_MIN_HEIGHT = 560;
 const EDITOR_MAX_HEIGHT = 900;
 const EDITOR_HEIGHT_BUFFER_LINES = 4;
 const DRAFT_DELAY_MS = 900;
+const DRAFT_STORAGE_VERSION = "v2";
 const PARAGRAPH_WARN_LINES = 7;
 const PARAGRAPH_WARN_CHARS_PER_LINE = 38;
 
@@ -39,13 +40,14 @@ const toolbarItems = [
 ] as const;
 
 type MarkdownEditorProps = {
+  readonly baselineTimestamp?: number;
   readonly defaultValue?: string;
   readonly draftKey: string;
   readonly excerpt: string;
   readonly title: string;
 };
 
-export function MarkdownEditor({ defaultValue, draftKey, excerpt, title }: MarkdownEditorProps) {
+export function MarkdownEditor({ baselineTimestamp, defaultValue, draftKey, excerpt, title }: MarkdownEditorProps) {
   const initialValue = defaultValue ?? "";
   const [mode, setMode] = useState<EditorMode>("write");
   const [value, setValue] = useState(initialValue);
@@ -56,7 +58,12 @@ export function MarkdownEditor({ defaultValue, draftKey, excerpt, title }: Markd
   const mounted = useClientMounted();
   const stats = useMemo(() => createStats({ cursor, markdown: value, mounted, width: editorWidth }), [cursor, editorWidth, mounted, value]);
   const report = useMemo(() => getReport({ editorWidth, excerpt, mounted, title, value }), [editorWidth, excerpt, mounted, title, value]);
-  const draft = useLocalDraft({ draftKey, initialValue, mounted, setValue, value });
+  const draft = useLocalDraft({ baselineTimestamp, draftKey, initialValue, mounted, setValue, value });
+
+  useEffect(() => {
+    setValue(initialValue);
+    setCursor(0);
+  }, [draftKey, initialValue]);
 
   useTextareaWidth(textareaRef, setEditorWidth);
 
@@ -112,8 +119,16 @@ function EditorStatus({ draft, report, stats }: { readonly draft: DraftControls;
       <span>第 {stats.cursorLine} 行</span>
       <span>约 {stats.minutes} 分钟</span>
       <span>{draft.status}</span>
-      {draft.hasRemoteDraft ? <button onClick={draft.restore} type="button">恢复草稿</button> : null}
-      {draft.hasRemoteDraft ? <button onClick={draft.clear} type="button">清除</button> : null}
+      {draft.hasRemoteDraft ? (
+        <button onClick={draft.restore} type="button">
+          恢复草稿
+        </button>
+      ) : null}
+      {draft.hasRemoteDraft ? (
+        <button onClick={draft.clear} type="button">
+          清除
+        </button>
+      ) : null}
     </div>
   );
 }
@@ -194,8 +209,7 @@ function EditorialPanel({ report, stats }: { readonly report: EditorialReport | 
       <div>
         <strong>编辑建议</strong>
         <span>
-          标题 {report.titleLines} 行 · 摘要 {report.excerptLines} 行 · 正文 {report.contentLines} 行 ·
-          行宽 {report.bodyWidth}px · 平均 {report.averageCharsPerLine} 字/行
+          标题 {report.titleLines} 行 · 摘要 {report.excerptLines} 行 · 正文 {report.contentLines} 行 · 行宽 {report.bodyWidth}px · 平均 {report.averageCharsPerLine} 字/行
         </span>
       </div>
       <CurrentParagraphInsight insight={stats.paragraph} />
@@ -263,24 +277,34 @@ type StatsOptions = {
 };
 
 function useLocalDraft(options: DraftOptions): DraftControls {
-  const storageKey = `prelog:draft:${options.draftKey}`;
+  const legacyStorageKey = `prelog:draft:${options.draftKey}`;
+  const storageKey = `prelog:draft:${DRAFT_STORAGE_VERSION}:${options.draftKey}`;
   const [remoteDraft, setRemoteDraft] = useState<DraftState | null>(null);
   const [loaded, setLoaded] = useState(false);
   const [status, setStatus] = useState("本地草稿准备中");
   const restoredValueRef = useRef<string | null>(null);
 
-  useLoadDraft({ ...options, remoteDraft, restoredValueRef, setLoaded, setRemoteDraft, setStatus, storageKey });
+  useEffect(() => {
+    window.localStorage.removeItem(legacyStorageKey);
+    setLoaded(false);
+    setRemoteDraft(null);
+    setStatus("本地草稿准备中");
+    restoredValueRef.current = null;
+  }, [legacyStorageKey, options.draftKey, options.initialValue]);
+
+  useLoadDraft({ ...options, loaded, restoredValueRef, setLoaded, setRemoteDraft, setStatus, storageKey });
   useSaveDraft({ initialValue: options.initialValue, loaded, restoredValueRef, setRemoteDraft, setStatus, storageKey, value: options.value });
 
   return {
     clear: () => clearDraft({ setRemoteDraft, setStatus, storageKey }),
     hasRemoteDraft: Boolean(remoteDraft && remoteDraft.value !== options.value),
-    restore: () => restoreDraft({ remoteDraft, setValue: options.setValue }),
+    restore: () => restoreDraft({ remoteDraft, restoredValueRef, setStatus, setValue: options.setValue }),
     status,
   };
 }
 
 type DraftOptions = {
+  readonly baselineTimestamp?: number;
   readonly draftKey: string;
   readonly initialValue: string;
   readonly mounted: boolean;
@@ -290,20 +314,20 @@ type DraftOptions = {
 
 function useLoadDraft(options: LoadDraftOptions) {
   useEffect(() => {
-    if (!options.mounted || options.remoteDraft) {
+    if (!options.mounted || options.loaded) {
       return;
     }
 
     loadDraft(options);
   }, [
+    options.baselineTimestamp,
     options.initialValue,
+    options.loaded,
     options.mounted,
-    options.remoteDraft,
     options.restoredValueRef,
     options.setLoaded,
     options.setRemoteDraft,
     options.setStatus,
-    options.setValue,
     options.storageKey,
   ]);
 }
@@ -314,23 +338,29 @@ function useSaveDraft(options: SaveDraftOptions) {
       return;
     }
 
-    if (options.value === options.initialValue) {
-      options.setStatus("本地草稿已准备");
+    const saveState = getDraftSaveState({
+      initialValue: options.initialValue,
+      restoredValue: options.restoredValueRef.current,
+      value: options.value,
+    });
+
+    if (saveState === "synced") {
+      options.setStatus("当前内容与已保存版本一致");
       return;
     }
 
-    if (options.restoredValueRef.current === options.value) {
+    if (saveState === "restored") {
       options.restoredValueRef.current = null;
+      options.setStatus("已恢复本地草稿");
       return;
     }
 
     options.setStatus("正在保存本地草稿");
     const id = window.setTimeout(() => saveDraft(options), DRAFT_DELAY_MS);
-    options.setRemoteDraft(null);
     return () => window.clearTimeout(id);
   }, [
-    options.loaded,
     options.initialValue,
+    options.loaded,
     options.restoredValueRef,
     options.setRemoteDraft,
     options.setStatus,
@@ -340,7 +370,7 @@ function useSaveDraft(options: SaveDraftOptions) {
 }
 
 type LoadDraftOptions = DraftOptions & {
-  readonly remoteDraft: DraftState | null;
+  readonly loaded: boolean;
   readonly restoredValueRef: MutableRefObject<string | null>;
   readonly setLoaded: (loaded: boolean) => void;
   readonly setRemoteDraft: (draft: DraftState | null) => void;
@@ -362,17 +392,33 @@ function loadDraft(options: LoadDraftOptions) {
   try {
     const raw = window.localStorage.getItem(options.storageKey);
     const draft = raw ? (JSON.parse(raw) as DraftState) : null;
+    const draftState = getDraftLoadState({
+      baselineTimestamp: options.baselineTimestamp,
+      draft,
+      initialValue: options.initialValue,
+    });
 
-    if (draft?.value && draft.value !== options.initialValue) {
-      options.restoredValueRef.current = draft.value;
-      options.setValue(draft.value);
+    if (draftState === "empty") {
+      options.setRemoteDraft(null);
+      options.setStatus("本地草稿已就绪");
+      return;
+    }
+
+    if (draftState === "stale") {
+      window.localStorage.removeItem(options.storageKey);
+      options.setRemoteDraft(null);
+      options.setStatus("已忽略过期的本地草稿");
+      return;
+    }
+
+    if (draftState === "available" && draft) {
       options.setRemoteDraft(draft);
-      options.setStatus(`已自动恢复本地草稿 ${formatTime(draft.savedAt)}`);
+      options.setStatus(`发现本地草稿 ${formatTime(draft.savedAt)}`);
       return;
     }
 
     options.setRemoteDraft(null);
-    options.setStatus("本地草稿已准备");
+    options.setStatus("本地草稿已就绪");
   } catch (error) {
     options.setStatus(`本地草稿不可用：${getErrorMessage(error)}`);
   } finally {
@@ -380,10 +426,12 @@ function loadDraft(options: LoadDraftOptions) {
   }
 }
 
-function saveDraft({ setStatus, storageKey, value }: SaveDraftOptions) {
+function saveDraft({ setRemoteDraft, setStatus, storageKey, value }: SaveDraftOptions) {
   try {
-    window.localStorage.setItem(storageKey, JSON.stringify({ savedAt: Date.now(), value }));
-    setStatus(`本地草稿已保存 ${formatTime(Date.now())}`);
+    const draft = { savedAt: Date.now(), value };
+    window.localStorage.setItem(storageKey, JSON.stringify(draft));
+    setRemoteDraft(draft);
+    setStatus(`本地草稿已保存 ${formatTime(draft.savedAt)}`);
   } catch (error) {
     setStatus(`本地草稿保存失败：${getErrorMessage(error)}`);
   }
@@ -395,10 +443,21 @@ function clearDraft({ setRemoteDraft, setStatus, storageKey }: { readonly setRem
   setStatus("本地草稿已清除");
 }
 
-function restoreDraft({ remoteDraft, setValue }: { readonly remoteDraft: DraftState | null; readonly setValue: (value: string) => void }) {
-  if (remoteDraft) {
-    setValue(remoteDraft.value);
+function restoreDraft(options: {
+  readonly remoteDraft: DraftState | null;
+  readonly restoredValueRef: MutableRefObject<string | null>;
+  readonly setStatus: (status: string) => void;
+  readonly setValue: (value: string) => void;
+}) {
+  const { remoteDraft, restoredValueRef, setStatus, setValue } = options;
+
+  if (!remoteDraft) {
+    return;
   }
+
+  restoredValueRef.current = remoteDraft.value;
+  setValue(remoteDraft.value);
+  setStatus(`已恢复本地草稿 ${formatTime(remoteDraft.savedAt)}`);
 }
 
 type InsertOptions = {
@@ -469,7 +528,7 @@ function getParagraphMessage(lines: number, charsPerLine: number) {
   }
 
   if (charsPerLine >= PARAGRAPH_WARN_CHARS_PER_LINE) {
-    return "行内信息偏密，可以加入停顿或小标题";
+    return "单行信息偏密，可以补一个停顿或小标题";
   }
 
   return "断行节奏稳定";

@@ -2,6 +2,7 @@ import Link from "next/link";
 import { BarChart3, FileText, MessageSquare, MousePointerClick } from "lucide-react";
 
 import { AdminNav } from "@/app/admin/admin-nav";
+import { toAdminPath } from "@/lib/admin-path";
 import type { DashboardActivity } from "@/lib/admin-dashboard";
 import { getAdminDashboardData } from "@/lib/admin-dashboard";
 import { requireAdmin } from "@/lib/session";
@@ -24,7 +25,7 @@ export default async function AdminIndexPage() {
             <span className="eyebrow">Dashboard</span>
             <h1>后台概览</h1>
           </div>
-          <Link className="button button--primary" href="/admin/posts/new">
+          <Link className="button button--primary" href={toAdminPath("/posts/new")}>
             新建文章
           </Link>
         </div>
@@ -83,7 +84,7 @@ function RecentActivities({ activities }: { readonly activities: readonly Dashbo
     <section className="admin-card">
       <div className="admin-card__head">
         <h2>最近动态</h2>
-        <Link href="/admin/posts">查看文章</Link>
+        <Link href={toAdminPath("/posts")}>查看文章</Link>
       </div>
       <div className="activity-list">
         {activities.map((activity) => (

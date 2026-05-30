@@ -2,6 +2,7 @@ import bcrypt from "bcryptjs";
 import type { NextAuthOptions } from "next-auth";
 import CredentialsProvider from "next-auth/providers/credentials";
 
+import { toAdminPath } from "@/lib/admin-path";
 import { ADMIN_USER_ID } from "@/lib/constants";
 import { prisma } from "@/lib/prisma";
 import { loginSchema } from "@/lib/validation";
@@ -12,7 +13,7 @@ export const authOptions: NextAuthOptions = {
     strategy: "jwt",
   },
   pages: {
-    signIn: "/admin/login",
+    signIn: toAdminPath("/login"),
   },
   providers: [
     CredentialsProvider({

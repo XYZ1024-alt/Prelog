@@ -1,3 +1,4 @@
+import { toAdminPath } from "@/lib/admin-path";
 import type { CommentStatus, PostStatus } from "@/generated/prisma/enums";
 import { prisma } from "@/lib/prisma";
 
@@ -84,7 +85,7 @@ function createRecentActivities(
   comments: readonly { readonly author: string; readonly createdAt: Date; readonly post: { readonly slug: string; readonly title: string }; readonly status: CommentStatus }[],
 ) {
   const postActivities = posts.map((post) => ({
-    href: `/admin/posts/${post.id}/edit`,
+    href: toAdminPath(`/posts/${post.id}/edit`),
     label: post.title,
     meta: `文章 · ${post.status === "PUBLISHED" ? "已发布" : "草稿"}`,
     time: post.updatedAt,

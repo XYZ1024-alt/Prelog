@@ -3,6 +3,7 @@ import { Plus } from "lucide-react";
 
 import { AdminNav } from "@/app/admin/admin-nav";
 import { deleteCategory } from "@/app/admin/categories/actions";
+import { toAdminPath } from "@/lib/admin-path";
 import { prisma } from "@/lib/prisma";
 import { requireAdmin } from "@/lib/session";
 
@@ -39,7 +40,7 @@ export default async function AdminCategoriesPage({ searchParams }: AdminCategor
             <span className="eyebrow">Categories</span>
             <h1>分类管理</h1>
           </div>
-          <Link className="button button--primary" href="/admin/categories/new">
+          <Link className="button button--primary" href={toAdminPath("/categories/new")}>
             <Plus size={16} />
             新建分类
           </Link>
@@ -61,7 +62,7 @@ export default async function AdminCategoriesPage({ searchParams }: AdminCategor
                 {category.description ? <p className="admin-row__note">{category.description}</p> : null}
               </div>
               <div className="admin-row__actions">
-                <Link className="button button--ghost" href={`/admin/categories/${category.id}/edit`}>
+                <Link className="button button--ghost" href={toAdminPath(`/categories/${category.id}/edit`)}>
                   编辑
                 </Link>
                 <form action={deleteCategory}>

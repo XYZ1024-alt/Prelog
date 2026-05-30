@@ -20,6 +20,7 @@ export function PostEditor({ action, categories, post }: EditorProps) {
   const [title, setTitle] = useState(post?.title ?? "");
   const [excerpt, setExcerpt] = useState(post?.excerpt ?? "");
   const draftKey = post ? `post:${post.id}` : "post:new";
+  const baselineTimestamp = post?.updatedAt.getTime();
 
   return (
     <form action={action} className="post-editor">
@@ -59,7 +60,13 @@ export function PostEditor({ action, categories, post }: EditorProps) {
         封面图 URL
         <input defaultValue={post?.coverImage ?? ""} name="coverImage" type="url" />
       </label>
-      <MarkdownEditor defaultValue={post?.content} draftKey={draftKey} excerpt={excerpt} title={title} />
+      <MarkdownEditor
+        baselineTimestamp={baselineTimestamp}
+        defaultValue={post?.content}
+        draftKey={draftKey}
+        excerpt={excerpt}
+        title={title}
+      />
       <div className="form-grid">
         <label>
           SEO 标题

@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 
+import { toAdminPath } from "@/lib/admin-path";
 import { prisma } from "@/lib/prisma";
 import { requireAdmin } from "@/lib/session";
 import { toSlug } from "@/lib/text";
@@ -14,7 +15,7 @@ export async function createCategory(formData: FormData) {
 
   await prisma.category.create({ data: categoryData(parsed) });
   revalidateCategories();
-  redirect("/admin/categories");
+  redirect(toAdminPath("/categories"));
 }
 
 export async function updateCategory(formData: FormData) {
@@ -27,7 +28,7 @@ export async function updateCategory(formData: FormData) {
     where: { id },
   });
   revalidateCategories();
-  redirect("/admin/categories");
+  redirect(toAdminPath("/categories"));
 }
 
 export async function deleteCategory(formData: FormData) {

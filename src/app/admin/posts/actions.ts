@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 
+import { toAdminPath } from "@/lib/admin-path";
 import { prisma } from "@/lib/prisma";
 import { requireAdmin } from "@/lib/session";
 import { createExcerpt, estimateReadingMinutes, toSlug } from "@/lib/text";
@@ -21,7 +22,7 @@ export async function createPost(formData: FormData) {
   });
 
   revalidateContent();
-  redirect(`/admin/posts/${post.id}/edit`);
+  redirect(toAdminPath(`/posts/${post.id}/edit`));
 }
 
 export async function updatePost(formData: FormData) {
@@ -42,7 +43,7 @@ export async function updatePost(formData: FormData) {
   await deleteUnusedTags();
 
   revalidateContent();
-  redirect("/admin/posts");
+  redirect(toAdminPath("/posts"));
 }
 
 export async function togglePostStatus(formData: FormData) {
