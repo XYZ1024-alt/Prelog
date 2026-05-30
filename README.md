@@ -37,7 +37,7 @@ Copy `.env.example` to `.env` and fill in at least:
 
 ```env
 DATABASE_URL=
-NEXTAUTH_SECRET=
+AUTH_SECRET=
 NEXTAUTH_URL=http://127.0.0.1:3000
 ADMIN_EMAIL=
 ADMIN_PASSWORD=

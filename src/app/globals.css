@@ -1793,6 +1793,12 @@ textarea:focus {
   margin: 8px 0 24px;
 }
 
+.admin-login__intro {
+  color: var(--text-soft);
+  line-height: 1.7;
+  margin: 0 0 18px;
+}
+
 .form-error {
   color: var(--danger);
 }
@@ -1871,6 +1877,17 @@ textarea:focus {
 .admin-panel {
   display: grid;
   gap: 20px;
+}
+
+.admin-filters {
+  align-items: stretch;
+  display: grid;
+  gap: 12px;
+  grid-template-columns: minmax(0, 1fr) 180px auto;
+}
+
+.admin-filters--compact {
+  grid-template-columns: minmax(0, 1fr) auto;
 }
 
 .admin-stats-grid {

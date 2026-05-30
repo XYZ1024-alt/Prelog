@@ -8,9 +8,24 @@ import { requireAdmin } from "@/lib/session";
 
 export const dynamic = "force-dynamic";
 
-export default async function AdminCategoriesPage() {
+type AdminCategoriesPageProps = {
+  searchParams: Promise<{ q?: string }>;
+};
+
+export default async function AdminCategoriesPage({ searchParams }: AdminCategoriesPageProps) {
   await requireAdmin();
+  const params = await searchParams;
+  const query = params.q?.trim() ?? "";
   const categories = await prisma.category.findMany({
+    where: query
+      ? {
+          OR: [
+            { name: { contains: query, mode: "insensitive" } },
+            { slug: { contains: query, mode: "insensitive" } },
+            { description: { contains: query, mode: "insensitive" } },
+          ],
+        }
+      : undefined,
     include: { _count: { select: { posts: true } } },
     orderBy: { updatedAt: "desc" },
   });
@@ -29,6 +44,12 @@ export default async function AdminCategoriesPage() {
             新建分类
           </Link>
         </div>
+        <form className="admin-filters admin-filters--compact">
+          <input defaultValue={query} name="q" placeholder="搜索分类名称、slug 或描述" type="search" />
+          <button className="button button--ghost" type="submit">
+            筛选
+          </button>
+        </form>
         <div className="admin-table">
           {categories.map((category) => (
             <article className="admin-row" key={category.id}>
@@ -52,7 +73,7 @@ export default async function AdminCategoriesPage() {
               </div>
             </article>
           ))}
-          {categories.length === 0 ? <p className="empty-state">还没有分类，先新建一个分类。</p> : null}
+          {categories.length === 0 ? <p className="empty-state">{query ? "没有匹配分类，换个关键词试试。" : "还没有分类，先新建一个分类。"}</p> : null}
         </div>
       </section>
     </main>

@@ -8,9 +8,29 @@ import { requireAdmin } from "@/lib/session";
 
 export const dynamic = "force-dynamic";
 
-export default async function AdminCommentsPage() {
+type AdminCommentsPageProps = {
+  searchParams: Promise<{ q?: string; status?: CommentStatus | "ALL" }>;
+};
+
+export default async function AdminCommentsPage({ searchParams }: AdminCommentsPageProps) {
   await requireAdmin();
+  const params = await searchParams;
+  const query = params.q?.trim() ?? "";
+  const status = isCommentStatus(params.status) ? params.status : "ALL";
   const comments = await prisma.comment.findMany({
+    where: {
+      ...(status !== "ALL" ? { status } : {}),
+      ...(query
+        ? {
+            OR: [
+              { author: { contains: query, mode: "insensitive" } },
+              { email: { contains: query, mode: "insensitive" } },
+              { body: { contains: query, mode: "insensitive" } },
+              { post: { title: { contains: query, mode: "insensitive" } } },
+            ],
+          }
+        : {}),
+    },
     include: {
       parent: { select: { author: true } },
       post: { select: { title: true, slug: true } },
@@ -35,6 +55,19 @@ export default async function AdminCommentsPage() {
             <span>垃圾 {counts.SPAM}</span>
           </div>
         </div>
+        <form className="admin-filters">
+          <input defaultValue={query} name="q" placeholder="搜索作者、邮箱、评论或文章标题" type="search" />
+          <select defaultValue={status} name="status">
+            <option value="ALL">全部状态</option>
+            <option value="PENDING">待审核</option>
+            <option value="APPROVED">已通过</option>
+            <option value="HIDDEN">隐藏</option>
+            <option value="SPAM">垃圾</option>
+          </select>
+          <button className="button button--ghost" type="submit">
+            筛选
+          </button>
+        </form>
 
         <div className="admin-table">
           {comments.map((comment) => (
@@ -67,6 +100,7 @@ export default async function AdminCommentsPage() {
               </div>
             </article>
           ))}
+          {comments.length === 0 ? <p className="empty-state">没有匹配评论，换个关键词或状态试试。</p> : null}
         </div>
       </section>
     </main>
@@ -99,10 +133,13 @@ function StatusAction({
 }
 
 function getStatusCounts(comments: readonly { readonly status: CommentStatus }[]) {
-  return comments.reduce(
-    (counts, comment) => ({ ...counts, [comment.status]: counts[comment.status] + 1 }),
-    { APPROVED: 0, HIDDEN: 0, PENDING: 0, SPAM: 0 } satisfies Record<CommentStatus, number>,
-  );
+  const counts = { APPROVED: 0, HIDDEN: 0, PENDING: 0, SPAM: 0 } satisfies Record<CommentStatus, number>;
+
+  comments.forEach((comment) => {
+    counts[comment.status] += 1;
+  });
+
+  return counts;
 }
 
 function getCommentStatusLabel(status: CommentStatus) {
@@ -114,4 +151,8 @@ function getCommentStatusLabel(status: CommentStatus) {
   };
 
   return labels[status];
+}
+
+function isCommentStatus(status: string | undefined): status is CommentStatus {
+  return status === "APPROVED" || status === "HIDDEN" || status === "PENDING" || status === "SPAM";
 }
