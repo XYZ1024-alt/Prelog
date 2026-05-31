@@ -34,7 +34,7 @@ export default async function AdminSettingsPage({ searchParams }: SettingsPagePr
           </div>
           <div className="admin-settings-note">
             <ShieldCheck size={16} />
-            <p>这个系统默认只维护一个管理员账号，不提供用户列表或多角色管理。这里可以直接修改登录邮箱、显示名称和密码。</p>
+            <p>这里可以直接修改登录邮箱、显示名称和密码。</p>
           </div>
           {updated === "1" ? <p className="form-success">管理员设置已保存。</p> : null}
           {error === "password" ? <p className="form-error">当前密码不正确。</p> : null}
@@ -51,7 +51,7 @@ export default async function AdminSettingsPage({ searchParams }: SettingsPagePr
           </div>
           <div className="admin-settings-note">
             <ShieldCheck size={16} />
-            <p>这个个人系统只维护一个站点配置。这里修改后，会直接影响首页、关于页、页脚和全站元信息。</p>
+            <p>这里修改后，会直接影响首页、关于页、页脚和全站元信息。</p>
           </div>
           {updated === "site" ? <p className="form-success">站点设置已保存。</p> : null}
           <SiteSettingsForm action={updateSiteSettings} defaults={siteSettings} />

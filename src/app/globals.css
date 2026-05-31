@@ -1721,20 +1721,29 @@ textarea:focus {
   line-height: 1.6;
 }
 
+.comment-form__reply-target {
+  align-items: center;
+  background: var(--surface-strong);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  display: flex;
+  gap: 12px;
+  justify-content: space-between;
+  padding: 10px 12px;
+}
+
+.comment-form__reply-target span {
+  color: var(--text);
+  font-size: 14px;
+  font-weight: 800;
+}
+
 .comment-form__website {
   height: 0;
   left: -9999px;
   overflow: hidden;
   position: absolute;
   width: 0;
-}
-
-.comment-form--reply {
-  background: var(--surface-strong);
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
-  margin-top: 10px;
-  padding: 14px;
 }
 
 .comment__body {
@@ -1759,6 +1768,22 @@ textarea:focus {
 .comment time {
   color: var(--text-subtle);
   font-size: 12px;
+}
+
+.comment__reply {
+  background: transparent;
+  border: 0;
+  color: var(--text-subtle);
+  cursor: pointer;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 800;
+  justify-self: start;
+  padding: 0;
+}
+
+.comment__reply:hover {
+  color: var(--text);
 }
 
 .admin-comment-stats {

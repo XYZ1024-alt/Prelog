@@ -3,7 +3,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { MessageCircle, Timer } from "lucide-react";
 
-import { CommentForm } from "@/app/posts/[slug]/comment-form";
+import { CommentsSection, type CommentNode } from "@/app/posts/[slug]/comments-section";
 import { ArticleToc } from "@/components/article-toc";
 import { DynamicArticleLayout } from "@/components/dynamic-article-layout";
 import { getMarkdownHeadings } from "@/lib/markdown-headings";
@@ -18,13 +18,9 @@ type PageProps = {
 type CommentItem = {
   readonly author: string;
   readonly body: string;
-  readonly createdAt: Date;
+  readonly createdAt: string;
   readonly id: string;
   readonly parentId: string | null;
-};
-
-type CommentNode = CommentItem & {
-  readonly replies: CommentNode[];
 };
 
 type NavigationPost = {
@@ -42,8 +38,8 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   }
 
   return {
-    title: post.seoTitle ?? post.title,
     description: post.seoDescription ?? post.excerpt,
+    title: post.seoTitle ?? post.title,
   };
 }
 
@@ -58,7 +54,15 @@ export default async function PostPage({ params }: PageProps) {
   const articleContent = stripLeadingTitleHeading(post.content, post.title);
   const articleHeadings = getMarkdownHeadings(articleContent);
   const navigation = await getPublishedPostNavigation(post.id);
-  const commentTree = buildCommentTree(post.comments);
+  const commentTree = buildCommentTree(
+    post.comments.map((comment) => ({
+      author: comment.author,
+      body: comment.body,
+      createdAt: comment.createdAt.toISOString(),
+      id: comment.id,
+      parentId: comment.parentId,
+    })),
+  );
 
   return (
     <main className="article-shell">
@@ -95,7 +99,7 @@ function ArticleNavigation({ navigation }: { readonly navigation: { readonly nex
   }
 
   return (
-    <nav className="article-navigation" aria-label="继续阅读">
+    <nav aria-label="继续阅读" className="article-navigation">
       <ArticleNavigationLink label="上一篇" post={navigation.previous} />
       <ArticleNavigationLink label="下一篇" post={navigation.next} />
     </nav>
@@ -113,44 +117,6 @@ function ArticleNavigationLink({ label, post }: { readonly label: string; readon
       <strong>{post.title}</strong>
       <p>{post.excerpt}</p>
     </Link>
-  );
-}
-
-function CommentsSection({ comments, postId, slug }: { readonly comments: readonly CommentNode[]; readonly postId: string; readonly slug: string }) {
-  return (
-    <section className="comments">
-      <h2>评论</h2>
-      <p className="comments__notice">评论提交后会进入审核，通过后展示。邮箱不会公开。</p>
-      <CommentForm postId={postId} slug={slug} />
-      <div className="comment-list">
-        {comments.map((comment) => (
-          <CommentThread comment={comment} key={comment.id} postId={postId} slug={slug} />
-        ))}
-      </div>
-      {comments.length === 0 ? <p className="empty-state">暂无评论，欢迎留下第一条想法。</p> : null}
-    </section>
-  );
-}
-
-function CommentThread({ comment, postId, slug }: { readonly comment: CommentNode; readonly postId: string; readonly slug: string }) {
-  return (
-    <article className="comment">
-      <div className="comment__body">
-        <div className="comment__meta">
-          <strong>{comment.author}</strong>
-          <time>{comment.createdAt.toLocaleString("zh-CN")}</time>
-        </div>
-        <p>{comment.body}</p>
-      </div>
-      <CommentForm parentId={comment.id} postId={postId} replyTo={comment.author} slug={slug} />
-      {comment.replies.length > 0 ? (
-        <div className="comment__replies">
-          {comment.replies.map((reply) => (
-            <CommentThread comment={reply} key={reply.id} postId={postId} slug={slug} />
-          ))}
-        </div>
-      ) : null}
-    </article>
   );
 }
 
@@ -191,7 +157,8 @@ function stripLeadingTitleHeading(content: string, title: string) {
   return removeMatchingFirstHeading({ firstContentLineIndex, lines, normalizedTitle });
 }
 
-function removeMatchingFirstHeading({ firstContentLineIndex, lines, normalizedTitle }: { readonly firstContentLineIndex: number; readonly lines: readonly string[]; readonly normalizedTitle: string }) {
+function removeMatchingFirstHeading(options: { readonly firstContentLineIndex: number; readonly lines: readonly string[]; readonly normalizedTitle: string }) {
+  const { firstContentLineIndex, lines, normalizedTitle } = options;
   const firstLine = lines[firstContentLineIndex].trim();
   const match = /^#\s+(.+)$/.exec(firstLine);
 

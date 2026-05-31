@@ -1,9 +1,10 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useMemo, useRef, useState, type Dispatch, type MutableRefObject, type SetStateAction } from "react";
 
 import { MarkdownEditor } from "@/app/admin/posts/markdown-editor";
 import type { Category, Post, PostTag, Tag } from "@/generated/prisma/client";
+import { getDraftLoadState, getDraftSaveState, type DraftState } from "@/lib/draft-logic";
 
 type PostWithTags = Post & {
   readonly tags: (PostTag & { readonly tag: Tag })[];
@@ -15,34 +16,46 @@ type EditorProps = {
   readonly post?: PostWithTags;
 };
 
+type PostDraftFields = {
+  readonly categoryId: string;
+  readonly content: string;
+  readonly coverImage: string;
+  readonly excerpt: string;
+  readonly seoDescription: string;
+  readonly seoTitle: string;
+  readonly slug: string;
+  readonly status: "DRAFT" | "PUBLISHED";
+  readonly tagNames: string;
+  readonly title: string;
+};
+
+const DRAFT_STORAGE_VERSION = "v3";
+const LEGACY_CONTENT_DRAFT_VERSION = "v2";
+const DRAFT_DELAY_MS = 900;
+
 export function PostEditor({ action, categories, post }: EditorProps) {
-  const tagNames = post?.tags.map(({ tag }) => tag.name).join(", ") ?? "";
-  const [title, setTitle] = useState(post?.title ?? "");
-  const [excerpt, setExcerpt] = useState(post?.excerpt ?? "");
   const draftKey = post ? `post:${post.id}` : "post:new";
-  const baselineTimestamp = post?.updatedAt.getTime();
+  const initialFields = useMemo(() => createInitialFields(post), [post]);
+  const [fields, setFields] = useState(initialFields);
+  const draft = usePostFormDraft({ baselineTimestamp: post?.updatedAt.getTime(), draftKey, fields, initialFields, setFields });
+
+  useEffect(() => setFields(initialFields), [draftKey, initialFields]);
 
   return (
     <form action={action} className="post-editor">
       {post ? <input name="id" type="hidden" value={post.id} /> : null}
       <div className="form-grid">
-        <label>
-          标题
-          <input name="title" onChange={(event) => setTitle(event.target.value)} required value={title} />
-        </label>
-        <label>
-          Slug
-          <input defaultValue={post?.slug} name="slug" placeholder="留空时根据标题生成拼音 slug" />
-        </label>
+        <TextField label="标题" name="title" onChange={setField(setFields, "title")} required value={fields.title} />
+        <TextField label="Slug" name="slug" onChange={setField(setFields, "slug")} placeholder="留空时根据标题生成拼音 slug" value={fields.slug} />
       </div>
       <label>
         摘要
-        <textarea name="excerpt" onChange={(event) => setExcerpt(event.target.value)} rows={3} value={excerpt} />
+        <textarea name="excerpt" onChange={(event) => setFields((current) => ({ ...current, excerpt: event.target.value }))} rows={3} value={fields.excerpt} />
       </label>
       <div className="form-grid">
         <label>
           分类
-          <select defaultValue={post?.categoryId ?? ""} name="categoryId">
+          <select name="categoryId" onChange={(event) => setFields((current) => ({ ...current, categoryId: event.target.value }))} value={fields.categoryId}>
             <option value="">未分类</option>
             {categories.map((category) => (
               <option key={category.id} value={category.id}>
@@ -51,35 +64,17 @@ export function PostEditor({ action, categories, post }: EditorProps) {
             ))}
           </select>
         </label>
-        <label>
-          标签
-          <input defaultValue={tagNames} name="tagNames" placeholder="Next.js, Pretext" />
-        </label>
+        <TextField label="标签" name="tagNames" onChange={setField(setFields, "tagNames")} placeholder="Next.js, Pretext" value={fields.tagNames} />
       </div>
-      <label>
-        封面图 URL
-        <input defaultValue={post?.coverImage ?? ""} name="coverImage" type="url" />
-      </label>
-      <MarkdownEditor
-        baselineTimestamp={baselineTimestamp}
-        defaultValue={post?.content}
-        draftKey={draftKey}
-        excerpt={excerpt}
-        title={title}
-      />
+      <TextField label="封面图 URL" name="coverImage" onChange={setField(setFields, "coverImage")} type="url" value={fields.coverImage} />
+      <MarkdownEditor draft={draft} excerpt={fields.excerpt} setValue={setField(setFields, "content")} title={fields.title} value={fields.content} />
       <div className="form-grid">
-        <label>
-          SEO 标题
-          <input defaultValue={post?.seoTitle ?? ""} name="seoTitle" />
-        </label>
-        <label>
-          SEO 描述
-          <input defaultValue={post?.seoDescription ?? ""} name="seoDescription" />
-        </label>
+        <TextField label="SEO 标题" name="seoTitle" onChange={setField(setFields, "seoTitle")} value={fields.seoTitle} />
+        <TextField label="SEO 描述" name="seoDescription" onChange={setField(setFields, "seoDescription")} value={fields.seoDescription} />
       </div>
       <label>
         状态
-        <select defaultValue={post?.status ?? "DRAFT"} name="status">
+        <select name="status" onChange={(event) => setFields((current) => ({ ...current, status: parsePostStatus(event.target.value) }))} value={fields.status}>
           <option value="DRAFT">草稿</option>
           <option value="PUBLISHED">发布</option>
         </select>
@@ -89,4 +84,299 @@ export function PostEditor({ action, categories, post }: EditorProps) {
       </button>
     </form>
   );
+}
+
+function TextField(props: {
+  readonly label: string;
+  readonly name: string;
+  readonly onChange: (value: string) => void;
+  readonly placeholder?: string;
+  readonly required?: boolean;
+  readonly type?: string;
+  readonly value: string;
+}) {
+  return (
+    <label>
+      {props.label}
+      <input name={props.name} onChange={(event) => props.onChange(event.target.value)} placeholder={props.placeholder} required={props.required} type={props.type} value={props.value} />
+    </label>
+  );
+}
+
+function createInitialFields(post?: PostWithTags): PostDraftFields {
+  return {
+    categoryId: post?.categoryId ?? "",
+    content: post?.content ?? "",
+    coverImage: post?.coverImage ?? "",
+    excerpt: post?.excerpt ?? "",
+    seoDescription: post?.seoDescription ?? "",
+    seoTitle: post?.seoTitle ?? "",
+    slug: post?.slug ?? "",
+    status: post?.status ?? "DRAFT",
+    tagNames: post?.tags.map(({ tag }) => tag.name).join(", ") ?? "",
+    title: post?.title ?? "",
+  };
+}
+
+function setField(setFields: Dispatch<SetStateAction<PostDraftFields>>, key: keyof PostDraftFields) {
+  return (value: string) => setFields((current) => ({ ...current, [key]: key === "status" ? parsePostStatus(value) : value }));
+}
+
+function parsePostStatus(value: string) {
+  return value === "PUBLISHED" ? "PUBLISHED" : "DRAFT";
+}
+
+function usePostFormDraft(options: {
+  readonly baselineTimestamp?: number;
+  readonly draftKey: string;
+  readonly fields: PostDraftFields;
+  readonly initialFields: PostDraftFields;
+  readonly setFields: Dispatch<SetStateAction<PostDraftFields>>;
+}) {
+  const storageKey = `prelog:post-form-draft:${DRAFT_STORAGE_VERSION}:${options.draftKey}`;
+  const legacyContentKey = `prelog:draft:${LEGACY_CONTENT_DRAFT_VERSION}:${options.draftKey}`;
+  const [remoteDraft, setRemoteDraft] = useState<DraftState | null>(null);
+  const [loaded, setLoaded] = useState(false);
+  const [status, setStatus] = useState("本地草稿准备中");
+  const restoredValueRef = useRef<string | null>(null);
+  const initialValue = useMemo(() => serializeFields(options.initialFields), [options.initialFields]);
+  const value = useMemo(() => serializeFields(options.fields), [options.fields]);
+
+  useResetDraftState({ draftKey: options.draftKey, setLoaded, setRemoteDraft, setStatus, storageKey });
+  useLoadPostDraft({ ...options, initialValue, legacyContentKey, loaded, restoredValueRef, setLoaded, setRemoteDraft, setStatus, storageKey });
+  useSavePostDraft({ initialValue, loaded, restoredValueRef, setRemoteDraft, setStatus, storageKey, value });
+
+  return {
+    clear: () => clearPostDraft({ setRemoteDraft, setStatus, storageKey }),
+    hasRemoteDraft: Boolean(remoteDraft && remoteDraft.value !== value),
+    restore: () => restorePostDraft({ remoteDraft, restoredValueRef, setFields: options.setFields, setStatus }),
+    status,
+  };
+}
+
+function useResetDraftState(options: {
+  readonly draftKey: string;
+  readonly setLoaded: (loaded: boolean) => void;
+  readonly setRemoteDraft: (draft: DraftState | null) => void;
+  readonly setStatus: (status: string) => void;
+  readonly storageKey: string;
+}) {
+  useEffect(() => {
+    options.setLoaded(false);
+    options.setRemoteDraft(null);
+    options.setStatus("本地草稿准备中");
+  }, [options.draftKey, options.setLoaded, options.setRemoteDraft, options.setStatus, options.storageKey]);
+}
+
+function useLoadPostDraft(options: {
+  readonly baselineTimestamp?: number;
+  readonly draftKey: string;
+  readonly fields: PostDraftFields;
+  readonly initialFields: PostDraftFields;
+  readonly initialValue: string;
+  readonly legacyContentKey: string;
+  readonly loaded: boolean;
+  readonly restoredValueRef: MutableRefObject<string | null>;
+  readonly setFields: Dispatch<SetStateAction<PostDraftFields>>;
+  readonly setLoaded: (loaded: boolean) => void;
+  readonly setRemoteDraft: (draft: DraftState | null) => void;
+  readonly setStatus: (status: string) => void;
+  readonly storageKey: string;
+}) {
+  useEffect(() => {
+    if (options.loaded) {
+      return;
+    }
+
+    loadPostDraft(options);
+  }, [
+    options.baselineTimestamp,
+    options.initialFields,
+    options.initialValue,
+    options.legacyContentKey,
+    options.loaded,
+    options.setLoaded,
+    options.setRemoteDraft,
+    options.setStatus,
+    options.storageKey,
+  ]);
+}
+
+function useSavePostDraft(options: {
+  readonly initialValue: string;
+  readonly loaded: boolean;
+  readonly restoredValueRef: MutableRefObject<string | null>;
+  readonly setRemoteDraft: (draft: DraftState | null) => void;
+  readonly setStatus: (status: string) => void;
+  readonly storageKey: string;
+  readonly value: string;
+}) {
+  useEffect(() => {
+    if (!options.loaded) {
+      return;
+    }
+
+    const saveState = getDraftSaveState({ initialValue: options.initialValue, restoredValue: options.restoredValueRef.current, value: options.value });
+
+    if (saveState === "synced") {
+      options.setStatus("当前内容与已保存版本一致");
+      return;
+    }
+
+    if (saveState === "restored") {
+      options.restoredValueRef.current = null;
+      options.setStatus("已恢复本地草稿");
+      return;
+    }
+
+    options.setStatus("正在保存本地草稿");
+    const id = window.setTimeout(() => savePostDraft(options), DRAFT_DELAY_MS);
+    return () => window.clearTimeout(id);
+  }, [
+    options.initialValue,
+    options.loaded,
+    options.restoredValueRef,
+    options.setRemoteDraft,
+    options.setStatus,
+    options.storageKey,
+    options.value,
+  ]);
+}
+
+function loadPostDraft(options: {
+  readonly baselineTimestamp?: number;
+  readonly initialFields: PostDraftFields;
+  readonly initialValue: string;
+  readonly legacyContentKey: string;
+  readonly setLoaded: (loaded: boolean) => void;
+  readonly setRemoteDraft: (draft: DraftState | null) => void;
+  readonly setStatus: (status: string) => void;
+  readonly storageKey: string;
+}) {
+  try {
+    const draft = readPostDraft({
+      initialFields: options.initialFields,
+      legacyContentKey: options.legacyContentKey,
+      storageKey: options.storageKey,
+    });
+    const draftState = getDraftLoadState({ baselineTimestamp: options.baselineTimestamp, draft, initialValue: options.initialValue });
+
+    applyLoadedDraftState({ ...options, draft, draftState });
+  } catch (error) {
+    options.setStatus(`本地草稿不可用：${getErrorMessage(error)}`);
+  } finally {
+    options.setLoaded(true);
+  }
+}
+
+function applyLoadedDraftState(options: {
+  readonly draft: DraftState | null;
+  readonly draftState: ReturnType<typeof getDraftLoadState>;
+  readonly setRemoteDraft: (draft: DraftState | null) => void;
+  readonly setStatus: (status: string) => void;
+  readonly storageKey: string;
+}) {
+  if (options.draftState === "stale") {
+    window.localStorage.removeItem(options.storageKey);
+    options.setRemoteDraft(null);
+    options.setStatus("已忽略过期的本地草稿");
+    return;
+  }
+
+  if (options.draftState === "available" && options.draft) {
+    options.setRemoteDraft(options.draft);
+    options.setStatus(`发现本地草稿 ${formatTime(options.draft.savedAt)}`);
+    return;
+  }
+
+  options.setRemoteDraft(null);
+  options.setStatus("本地草稿已就绪");
+}
+
+function readPostDraft(options: {
+  readonly initialFields: PostDraftFields;
+  readonly legacyContentKey: string;
+  readonly storageKey: string;
+}) {
+  const raw = window.localStorage.getItem(options.storageKey);
+
+  if (raw) {
+    return JSON.parse(raw) as DraftState;
+  }
+
+  return readLegacyContentDraft(options);
+}
+
+function readLegacyContentDraft(options: {
+  readonly initialFields: PostDraftFields;
+  readonly legacyContentKey: string;
+}) {
+  const raw = window.localStorage.getItem(options.legacyContentKey);
+  const legacyDraft = raw ? (JSON.parse(raw) as DraftState) : null;
+
+  if (!legacyDraft?.value) {
+    return null;
+  }
+
+  return {
+    savedAt: legacyDraft.savedAt,
+    value: serializeFields({ ...options.initialFields, content: legacyDraft.value }),
+  };
+}
+
+function savePostDraft({ setRemoteDraft, setStatus, storageKey, value }: {
+  readonly setRemoteDraft: (draft: DraftState | null) => void;
+  readonly setStatus: (status: string) => void;
+  readonly storageKey: string;
+  readonly value: string;
+}) {
+  try {
+    const draft = { savedAt: Date.now(), value };
+    window.localStorage.setItem(storageKey, JSON.stringify(draft));
+    setRemoteDraft(draft);
+    setStatus(`本地草稿已保存 ${formatTime(draft.savedAt)}`);
+  } catch (error) {
+    setStatus(`本地草稿保存失败：${getErrorMessage(error)}`);
+  }
+}
+
+function clearPostDraft(options: {
+  readonly setRemoteDraft: (draft: DraftState | null) => void;
+  readonly setStatus: (status: string) => void;
+  readonly storageKey: string;
+}) {
+  window.localStorage.removeItem(options.storageKey);
+  options.setRemoteDraft(null);
+  options.setStatus("本地草稿已清除");
+}
+
+function restorePostDraft(options: {
+  readonly remoteDraft: DraftState | null;
+  readonly restoredValueRef: MutableRefObject<string | null>;
+  readonly setFields: Dispatch<SetStateAction<PostDraftFields>>;
+  readonly setStatus: (status: string) => void;
+}) {
+  if (!options.remoteDraft) {
+    return;
+  }
+
+  options.restoredValueRef.current = options.remoteDraft.value;
+  options.setFields(parseFields(options.remoteDraft.value));
+  options.setStatus(`已恢复本地草稿 ${formatTime(options.remoteDraft.savedAt)}`);
+}
+
+function serializeFields(fields: PostDraftFields) {
+  return JSON.stringify(fields);
+}
+
+function parseFields(value: string): PostDraftFields {
+  return JSON.parse(value) as PostDraftFields;
+}
+
+function formatTime(timestamp: number) {
+  return new Intl.DateTimeFormat("zh-CN", { hour: "2-digit", minute: "2-digit" }).format(timestamp);
+}
+
+function getErrorMessage(error: unknown) {
+  return error instanceof Error ? error.message : "未知错误";
 }

@@ -1,15 +1,39 @@
-import { addComment } from "@/app/posts/[slug]/actions";
+"use client";
+
+import { useActionState, useEffect, useRef } from "react";
+
+import { addComment, type CommentFormState } from "@/app/posts/[slug]/actions";
 
 type CommentFormProps = {
+  readonly onClearReply?: () => void;
+  readonly onSubmitted?: () => void;
   readonly parentId?: string;
   readonly postId: string;
   readonly replyTo?: string;
   readonly slug: string;
 };
 
-export function CommentForm({ parentId, postId, replyTo, slug }: CommentFormProps) {
+const initialState: CommentFormState = {
+  message: "",
+  ok: false,
+};
+
+export function CommentForm(props: CommentFormProps) {
+  const { onClearReply, onSubmitted, parentId, postId, replyTo, slug } = props;
+  const formRef = useRef<HTMLFormElement>(null);
+  const [state, formAction, pending] = useActionState(addComment, initialState);
+
+  useEffect(() => {
+    if (!state.ok) {
+      return;
+    }
+
+    formRef.current?.reset();
+    onSubmitted?.();
+  }, [onSubmitted, state.ok]);
+
   return (
-    <form action={addComment} className={parentId ? "comment-form comment-form--reply" : "comment-form"}>
+    <form action={formAction} className="comment-form" ref={formRef}>
       <input name="postId" type="hidden" value={postId} />
       <input name="slug" type="hidden" value={slug} />
       {parentId ? <input name="parentId" type="hidden" value={parentId} /> : null}
@@ -17,7 +41,7 @@ export function CommentForm({ parentId, postId, replyTo, slug }: CommentFormProp
         Website
         <input autoComplete="off" name="website" tabIndex={-1} />
       </label>
-      {replyTo ? <p className="comment-form__hint">回复 {replyTo}</p> : null}
+      {replyTo ? <ReplyTargetNotice onClearReply={onClearReply} replyTo={replyTo} /> : null}
       <div className="form-grid">
         <label>
           昵称
@@ -30,11 +54,23 @@ export function CommentForm({ parentId, postId, replyTo, slug }: CommentFormProp
       </div>
       <label>
         评论
-        <textarea name="body" required rows={parentId ? 3 : 5} />
+        <textarea name="body" required rows={5} />
       </label>
-      <button className="button button--primary" type="submit">
-        提交审核
+      {state.message ? <p className={state.ok ? "form-success" : "form-error"}>{state.message}</p> : null}
+      <button className="button button--primary" disabled={pending} type="submit">
+        {pending ? "提交中" : "提交审核"}
       </button>
     </form>
+  );
+}
+
+function ReplyTargetNotice({ onClearReply, replyTo }: { readonly onClearReply?: () => void; readonly replyTo: string }) {
+  return (
+    <div className="comment-form__reply-target">
+      <span>正在回复 {replyTo}</span>
+      <button className="button button--ghost" onClick={onClearReply} type="button">
+        取消回复
+      </button>
+    </div>
   );
 }
