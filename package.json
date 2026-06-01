@@ -8,6 +8,12 @@
     "build": "prisma generate && next build",
     "lint": "eslint .",
     "typecheck": "prisma generate && tsc --noEmit",
+    "test": "npm run test:unit && npm run test:integration && npm run test:e2e",
+    "test:ci": "npm run lint && npm run typecheck && npm run build && npm test",
+    "test:unit": "vitest run --config vitest.unit.config.ts",
+    "test:integration": "npm run test:db:reset && vitest run --config vitest.integration.config.ts",
+    "test:e2e": "npm run test:db:reset && playwright test",
+    "test:db:reset": "prisma generate && tsx tests/helpers/reset-test-db.ts",
     "prisma:generate": "prisma generate",
     "prisma:migrate": "prisma migrate dev",
     "prisma:seed": "prisma db seed",
@@ -34,6 +40,7 @@
     "zod": "4.4.3"
   },
   "devDependencies": {
+    "@playwright/test": "^1.60.0",
     "@types/node": "25.9.1",
     "@types/pg": "8.20.0",
     "@types/react": "19.2.15",
@@ -42,7 +49,8 @@
     "eslint-config-next": "16.2.6",
     "prisma": "7.8.0",
     "tsx": "4.22.3",
-    "typescript": "6.0.3"
+    "typescript": "6.0.3",
+    "vitest": "^4.1.7"
   },
   "prisma": {
     "seed": "tsx prisma/seed.ts"
