@@ -116,6 +116,10 @@ jobs:
             cp -r prisma release/prisma
           fi
 
+          if [ -f prisma.config.ts ]; then
+            cp prisma.config.ts release/prisma.config.ts
+          fi
+
           tar -czf release.tar.gz -C release .
 
       - name: Upload release artifact
@@ -236,7 +240,7 @@ jobs:
           cd "$CURRENT_LINK"
 
           if command -v npx >/dev/null 2>&1 && [ -d prisma ]; then
-            npx prisma migrate deploy
+            npx prisma migrate deploy --config ./prisma.config.ts
           fi
 
           cat > ecosystem.config.cjs <<EOC
