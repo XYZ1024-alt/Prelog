@@ -251,7 +251,11 @@ DEPLOY_KEY      SSH 私钥内容
 DEPLOY_PATH     服务器上的项目目录，例如 /var/www/prelog
 DEPLOY_PORT     SSH 端口，可选，默认 22
 PM2_APP_NAME    PM2 应用名，可选，默认 prelog
+ADMIN_PATH      后台入口，必须和服务器 .env 中的 ADMIN_PATH 一致
+NEXTAUTH_URL    正式站点地址，必须和服务器 .env 中的 NEXTAUTH_URL 一致
 ```
+
+`ADMIN_PATH` 会参与 Next.js middleware 和前端链接的构建，GitHub Actions build 阶段必须读取到生产值。服务器 `.env` 会在部署时复制进 release 目录，用于运行时配置。
 
 部署 job 在服务器上执行的核心动作：
 
