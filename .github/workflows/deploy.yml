@@ -240,6 +240,18 @@ jobs:
           cd "$CURRENT_LINK"
 
           if command -v npx >/dev/null 2>&1 && [ -d prisma ]; then
+            set -a
+
+            if [ -f "$CURRENT_LINK/.env" ]; then
+              . "$CURRENT_LINK/.env"
+            fi
+
+            if [ -f "$CURRENT_LINK/.env.production" ]; then
+              . "$CURRENT_LINK/.env.production"
+            fi
+
+            set +a
+
             npx prisma migrate deploy --config ./prisma.config.ts
           fi
 
