@@ -15,29 +15,31 @@ jobs:
     name: Check
     runs-on: ubuntu-latest
     timeout-minutes: 20
+
     services:
-      services:
-        postgres:
-          image: postgres:16
-          env:
-            POSTGRES_DB: prelog_ci
-            POSTGRES_PASSWORD: postgres
-            POSTGRES_USER: postgres
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_DB: prelog_ci
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_USER: postgres
         options: >-
-          --health-cmd "pg_isready -U postgres -d prelog_test"
+          --health-cmd "pg_isready -U postgres -d prelog_ci"
           --health-interval 10s
           --health-timeout 5s
           --health-retries 5
         ports:
           - 5432:5432
+
     env:
       ADMIN_EMAIL: admin@example.com
       ADMIN_PASSWORD: TestPassword123!
       ADMIN_PATH: /admin
       AUTH_SECRET: test-auth-secret-at-least-32-characters
-      DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/prelog_test?schema=public
+      DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/prelog_ci?schema=public
       DATABASE_URL_TEST: postgresql://postgres:postgres@127.0.0.1:5432/prelog_test?schema=public
       NEXTAUTH_URL: http://127.0.0.1:3000
+
     steps:
       - name: Checkout
         uses: actions/checkout@v4
