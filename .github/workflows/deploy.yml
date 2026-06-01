@@ -138,7 +138,7 @@ jobs:
         with:
           name: prelog-release
 
-      - name: Deploy over SSH
+            - name: Deploy over SSH
         env:
           DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
           DEPLOY_KEY: ${{ secrets.DEPLOY_KEY }}
@@ -149,44 +149,6 @@ jobs:
           RELEASE_SHA: ${{ github.sha }}
         run: |
           set -euo pipefail
-
-          export PATH="/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:$PATH"
-
-          export NVM_DIR="/root/.nvm"
-          if [ -s "$NVM_DIR/nvm.sh" ]; then
-            . "$NVM_DIR/nvm.sh"
-            nvm use default >/dev/null 2>&1 || true
-            nvm use 24 >/dev/null 2>&1 || true
-          fi
-
-          PM2_BIN="$(command -v pm2 || true)"
-
-          if [ -z "$PM2_BIN" ]; then
-            for p in /root/.nvm/versions/node/*/bin/pm2 /usr/local/bin/pm2 /usr/bin/pm2 /www/server/nodejs/*/bin/pm2; do
-              if [ -x "$p" ]; then
-                PM2_BIN="$p"
-                break
-              fi
-            done
-          fi
-
-          if [ -z "$PM2_BIN" ]; then
-            echo "pm2 not found"
-            echo "whoami=$(whoami)"
-            echo "HOME=$HOME"
-            echo "PATH=$PATH"
-            echo "nvm dir:"
-            ls -la /root/.nvm/versions/node/*/bin/pm2 2>/dev/null || true
-            exit 127
-          fi
-
-          export PATH="$(dirname "$PM2_BIN"):$PATH"
-          echo "Using PM2: $PM2_BIN"
-          echo "Using Node: $(command -v node || true)"
-          echo "Using NPM: $(command -v npm || true)"
-
-          RELEASE_DIR="$DEPLOY_PATH/releases/$RELEASE_SHA"
-          CURRENT_LINK="$DEPLOY_PATH/current"
 
           : "${DEPLOY_HOST:?DEPLOY_HOST secret is required}"
           : "${DEPLOY_KEY:?DEPLOY_KEY secret is required}"
@@ -211,6 +173,48 @@ jobs:
             -i ~/.ssh/deploy_key -p "$SSH_PORT" "$DEPLOY_USER@$DEPLOY_HOST" \
             "RELEASE_SHA='$RELEASE_SHA' DEPLOY_PATH='$DEPLOY_PATH' PM2_APP_NAME='$APP_NAME' REMOTE_TAR='$REMOTE_TAR' bash -se" <<'EOF'
           set -euo pipefail
+
+          echo "Remote whoami=$(whoami)"
+          echo "Remote HOME=$HOME"
+
+          export PATH="/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:$PATH"
+
+          export NVM_DIR="$HOME/.nvm"
+          if [ -s "$NVM_DIR/nvm.sh" ]; then
+            . "$NVM_DIR/nvm.sh"
+            nvm use default >/dev/null 2>&1 || true
+            nvm use 24 >/dev/null 2>&1 || true
+          fi
+
+          PM2_BIN="$(command -v pm2 || true)"
+
+          if [ -z "$PM2_BIN" ]; then
+            for p in "$HOME"/.nvm/versions/node/*/bin/pm2 /usr/local/bin/pm2 /usr/bin/pm2 /www/server/nodejs/*/bin/pm2; do
+              if [ -x "$p" ]; then
+                PM2_BIN="$p"
+                break
+              fi
+            done
+          fi
+
+          if [ -z "$PM2_BIN" ]; then
+            echo "pm2 not found on remote server"
+            echo "whoami=$(whoami)"
+            echo "HOME=$HOME"
+            echo "PATH=$PATH"
+            echo "possible pm2:"
+            ls -la "$HOME"/.nvm/versions/node/*/bin/pm2 2>/dev/null || true
+            ls -la /usr/local/bin/pm2 2>/dev/null || true
+            ls -la /usr/bin/pm2 2>/dev/null || true
+            ls -la /www/server/nodejs/*/bin/pm2 2>/dev/null || true
+            exit 127
+          fi
+
+          export PATH="$(dirname "$PM2_BIN"):$PATH"
+
+          echo "Using PM2: $PM2_BIN"
+          echo "Using Node: $(command -v node || true)"
+          echo "Using NPM: $(command -v npm || true)"
 
           RELEASE_DIR="$DEPLOY_PATH/releases/$RELEASE_SHA"
           CURRENT_LINK="$DEPLOY_PATH/current"
