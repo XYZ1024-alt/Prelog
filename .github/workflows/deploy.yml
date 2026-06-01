@@ -66,64 +66,64 @@ jobs:
         run: npm run test:ci
 
     build:
-    name: Build
-    needs: check
-    runs-on: ubuntu-latest
-    timeout-minutes: 20
-    if: github.ref == 'refs/heads/main'
-    env:
-      NEXTAUTH_URL: https://iloveprc.com
-      AUTH_SECRET: build-time-placeholder-auth-secret-at-least-32-chars
-      DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/prelog_build?schema=public
-      ADMIN_EMAIL: admin@example.com
-      ADMIN_PASSWORD: BuildOnlyPassword123!
-      ADMIN_PATH: /admin
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
+      name: Build
+      needs: check
+      runs-on: ubuntu-latest
+      timeout-minutes: 20
+      if: github.ref == 'refs/heads/main'
+      env:
+        NEXTAUTH_URL: https://iloveprc.com
+        AUTH_SECRET: build-time-placeholder-auth-secret-at-least-32-chars
+        DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/prelog_build?schema=public
+        ADMIN_EMAIL: admin@example.com
+        ADMIN_PASSWORD: BuildOnlyPassword123!
+        ADMIN_PATH: /admin
+      steps:
+        - name: Checkout
+          uses: actions/checkout@v4
 
-      - name: Setup Node
-        uses: actions/setup-node@v4
-        with:
-          node-version: 24
-          cache: npm
+        - name: Setup Node
+          uses: actions/setup-node@v4
+          with:
+            node-version: 24
+            cache: npm
 
-      - name: Install dependencies
-        run: npm ci --include=dev
+        - name: Install dependencies
+          run: npm ci --include=dev
 
-      - name: Generate Prisma Client
-        run: npx prisma generate
+        - name: Generate Prisma Client
+          run: npx prisma generate
 
-      - name: Build Next.js
-        run: npm run build
-        env:
-          NODE_ENV: production
+        - name: Build Next.js
+          run: npm run build
+          env:
+            NODE_ENV: production
 
-      - name: Prepare release
-        run: |
-          set -euo pipefail
+        - name: Prepare release
+          run: |
+            set -euo pipefail
 
-          mkdir -p release/.next
+            mkdir -p release/.next
 
-          cp -r .next/standalone/* release/
-          cp -r .next/static release/.next/static
+            cp -r .next/standalone/* release/
+            cp -r .next/static release/.next/static
 
-          if [ -d public ]; then
-            cp -r public release/public
-          fi
+            if [ -d public ]; then
+              cp -r public release/public
+            fi
 
-          if [ -d prisma ]; then
-            cp -r prisma release/prisma
-          fi
+            if [ -d prisma ]; then
+              cp -r prisma release/prisma
+            fi
 
-          tar -czf release.tar.gz -C release .
+            tar -czf release.tar.gz -C release .
 
-      - name: Upload release artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: prelog-release
-          path: release.tar.gz
-          retention-days: 1
+        - name: Upload release artifact
+          uses: actions/upload-artifact@v4
+          with:
+            name: prelog-release
+            path: release.tar.gz
+            retention-days: 1
 
   deploy:
     name: Deploy
