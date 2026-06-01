@@ -2,7 +2,6 @@ import Link from "next/link";
 import { PenLine, Search } from "lucide-react";
 
 import { ThemeToggle } from "@/components/theme-toggle";
-import { toAdminPath } from "@/lib/admin-path";
 import { getSiteSettings } from "@/lib/site-settings";
 
 const NAV_ITEMS = [
@@ -47,9 +46,6 @@ export async function SiteFooter() {
         <p>{settings.footerPrimary}</p>
         <p>{settings.footerSecondary}</p>
       </div>
-      <Link className="site-footer__admin" href={toAdminPath()}>
-        管理
-      </Link>
     </footer>
   );
 }

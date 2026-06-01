@@ -2195,16 +2195,6 @@ textarea:focus {
   margin-top: 6px;
 }
 
-.site-footer__admin {
-  align-self: flex-start;
-  color: color-mix(in srgb, var(--muted) 72%, transparent);
-  font-size: 13px;
-}
-
-.site-footer__admin:hover {
-  color: var(--text);
-}
-
 .about-content {
   display: grid;
   gap: 28px;
