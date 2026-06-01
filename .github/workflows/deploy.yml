@@ -105,7 +105,7 @@ jobs:
 
           mkdir -p release/.next
 
-          cp -r .next/standalone/* release/
+          cp -r .next/standalone/. release/
           cp -r .next/static release/.next/static
 
           if [ -d public ]; then
