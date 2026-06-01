@@ -7,6 +7,8 @@ import { SiteFooter, SiteHeader } from "@/components/site-shell";
 import { getSiteSettings } from "@/lib/site-settings";
 import "./globals.css";
 
+export const dynamic = "force-dynamic";
+
 export async function generateMetadata(): Promise<Metadata> {
   const settings = await getSiteSettings();
 

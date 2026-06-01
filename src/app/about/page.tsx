@@ -4,6 +4,8 @@ import { AnimatedPage } from "@/components/animated-page";
 import { TypographicAscii } from "@/components/typographic-ascii";
 import { getSiteSettings, splitAboutTopics } from "@/lib/site-settings";
 
+export const dynamic = "force-dynamic";
+
 export async function generateMetadata(): Promise<Metadata> {
   const settings = await getSiteSettings();
 
