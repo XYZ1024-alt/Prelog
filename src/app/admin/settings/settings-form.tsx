@@ -1,3 +1,5 @@
+import { SubmitButton } from "@/components/submit-button";
+
 type SettingsFormProps = {
   readonly action: (formData: FormData) => Promise<void>;
   readonly defaults: {
@@ -33,9 +35,9 @@ export function SettingsForm({ action, defaults }: SettingsFormProps) {
           <input autoComplete="new-password" name="confirmPassword" placeholder="再次输入新密码" type="password" />
         </label>
       </div>
-      <button className="button button--primary" type="submit">
+      <SubmitButton className="button button--primary" pendingChildren="保存中...">
         保存管理员设置
-      </button>
+      </SubmitButton>
     </form>
   );
 }

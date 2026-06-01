@@ -3,6 +3,7 @@ import { Plus } from "lucide-react";
 
 import { AdminNav } from "@/app/admin/admin-nav";
 import { deleteCategory } from "@/app/admin/categories/actions";
+import { SubmitButton } from "@/components/submit-button";
 import { toAdminPath } from "@/lib/admin-path";
 import { prisma } from "@/lib/prisma";
 import { requireAdmin } from "@/lib/session";
@@ -47,9 +48,9 @@ export default async function AdminCategoriesPage({ searchParams }: AdminCategor
         </div>
         <form className="admin-filters admin-filters--compact">
           <input defaultValue={query} name="q" placeholder="搜索分类名称、slug 或描述" type="search" />
-          <button className="button button--ghost" type="submit">
+          <SubmitButton className="button button--ghost" pendingChildren="筛选中...">
             筛选
-          </button>
+          </SubmitButton>
         </form>
         <div className="admin-table">
           {categories.map((category) => (
@@ -67,9 +68,9 @@ export default async function AdminCategoriesPage({ searchParams }: AdminCategor
                 </Link>
                 <form action={deleteCategory}>
                   <input name="id" type="hidden" value={category.id} />
-                  <button className="button button--danger" type="submit">
+                  <SubmitButton className="button button--danger" pendingChildren="删除中...">
                     删除
-                  </button>
+                  </SubmitButton>
                 </form>
               </div>
             </article>

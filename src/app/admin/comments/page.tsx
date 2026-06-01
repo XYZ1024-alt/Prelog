@@ -2,6 +2,7 @@ import Link from "next/link";
 
 import { AdminNav } from "@/app/admin/admin-nav";
 import { approveComment, deleteComment, hideComment, markCommentSpam } from "@/app/admin/comments/actions";
+import { SubmitButton } from "@/components/submit-button";
 import type { CommentStatus } from "@/generated/prisma/client";
 import { prisma } from "@/lib/prisma";
 import { requireAdmin } from "@/lib/session";
@@ -64,9 +65,9 @@ export default async function AdminCommentsPage({ searchParams }: AdminCommentsP
             <option value="HIDDEN">隐藏</option>
             <option value="SPAM">垃圾</option>
           </select>
-          <button className="button button--ghost" type="submit">
+          <SubmitButton className="button button--ghost" pendingChildren="筛选中...">
             筛选
-          </button>
+          </SubmitButton>
         </form>
 
         <div className="admin-table">
@@ -93,9 +94,9 @@ export default async function AdminCommentsPage({ searchParams }: AdminCommentsP
                 <StatusAction action={markCommentSpam} hidden={comment.status === "SPAM"} id={comment.id} label="垃圾" />
                 <form action={deleteComment}>
                   <input name="id" type="hidden" value={comment.id} />
-                  <button className="button button--danger" type="submit">
+                  <SubmitButton className="button button--danger" pendingChildren="删除中...">
                     删除
-                  </button>
+                  </SubmitButton>
                 </form>
               </div>
             </article>
@@ -125,9 +126,9 @@ function StatusAction({
   return (
     <form action={action}>
       <input name="id" type="hidden" value={id} />
-      <button className="button button--ghost" type="submit">
+      <SubmitButton className="button button--ghost" pendingChildren="处理中...">
         {label}
-      </button>
+      </SubmitButton>
     </form>
   );
 }

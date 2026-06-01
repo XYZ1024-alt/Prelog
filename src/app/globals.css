@@ -482,6 +482,12 @@ p {
   padding: 0 16px;
 }
 
+.button:disabled,
+.button[aria-busy="true"] {
+  cursor: wait;
+  opacity: 0.68;
+}
+
 .button--primary {
   background: var(--brand-blue);
   border-color: var(--brand-blue);
@@ -1897,6 +1903,12 @@ textarea:focus {
   background: var(--surface-strong);
   border-color: var(--border);
   color: var(--text);
+}
+
+.admin-nav__signout:disabled,
+.admin-nav__signout[aria-busy="true"] {
+  cursor: wait;
+  opacity: 0.68;
 }
 
 .admin-panel {

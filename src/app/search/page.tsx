@@ -2,6 +2,7 @@ import Link from "next/link";
 import { Hash, Search, Shapes, Sparkles } from "lucide-react";
 
 import { AnimatedPage } from "@/components/animated-page";
+import { SubmitButton } from "@/components/submit-button";
 import { getCategoriesWithCounts, getTagsWithCounts, searchPublishedPosts } from "@/lib/posts";
 
 export const dynamic = "force-dynamic";
@@ -67,9 +68,9 @@ function SearchForm({ query }: { readonly query: string }) {
   return (
     <form className="search-form search-form--wide">
       <input autoComplete="off" defaultValue={query} name="q" placeholder="输入标题、标签、分类或正文关键词" type="search" />
-      <button className="button button--primary" type="submit">
+      <SubmitButton className="button button--primary" pendingChildren="搜索中...">
         搜索
-      </button>
+      </SubmitButton>
     </form>
   );
 }

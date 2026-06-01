@@ -4,6 +4,7 @@ import type { PostStatus } from "@/generated/prisma/client";
 
 import { AdminNav } from "@/app/admin/admin-nav";
 import { deletePost, togglePostStatus } from "@/app/admin/posts/actions";
+import { SubmitButton } from "@/components/submit-button";
 import { toAdminPath } from "@/lib/admin-path";
 import { prisma } from "@/lib/prisma";
 import { requireAdmin } from "@/lib/session";
@@ -52,9 +53,9 @@ export default async function AdminPostsPage({ searchParams }: AdminPostsPagePro
             <option value="PUBLISHED">已发布</option>
             <option value="DRAFT">草稿</option>
           </select>
-          <button className="button button--ghost" type="submit">
+          <SubmitButton className="button button--ghost" pendingChildren="筛选中...">
             筛选
-          </button>
+          </SubmitButton>
         </form>
         {tag ? (
           <p className="admin-row__note">
@@ -77,15 +78,15 @@ export default async function AdminPostsPage({ searchParams }: AdminPostsPagePro
                 </Link>
                 <form action={togglePostStatus}>
                   <input name="id" type="hidden" value={post.id} />
-                  <button className="button button--ghost" type="submit">
+                  <SubmitButton className="button button--ghost" pendingChildren="处理中...">
                     {post.status === "PUBLISHED" ? "撤回" : "发布"}
-                  </button>
+                  </SubmitButton>
                 </form>
                 <form action={deletePost}>
                   <input name="id" type="hidden" value={post.id} />
-                  <button className="button button--danger" type="submit">
+                  <SubmitButton className="button button--danger" pendingChildren="删除中...">
                     删除
-                  </button>
+                  </SubmitButton>
                 </form>
               </div>
             </article>

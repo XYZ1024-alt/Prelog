@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useRef, useState, type Dispatch, type MutableRefObject, type SetStateAction } from "react";
 
 import { MarkdownEditor } from "@/app/admin/posts/markdown-editor";
+import { SubmitButton } from "@/components/submit-button";
 import type { Category, Post, PostTag, Tag } from "@/generated/prisma/client";
 import { getDraftLoadState, getDraftSaveState, type DraftState } from "@/lib/draft-logic";
 
@@ -96,9 +97,9 @@ function PostEditorForm({ action, categories, draftKey, initialFields, post }: P
           <option value="PUBLISHED">发布</option>
         </select>
       </label>
-      <button className="button button--primary" type="submit">
+      <SubmitButton className="button button--primary" pendingChildren="保存中...">
         保存
-      </button>
+      </SubmitButton>
     </form>
   );
 }

@@ -1,3 +1,5 @@
+import { SubmitButton } from "@/components/submit-button";
+
 type SiteSettingsFormProps = {
   readonly action: (formData: FormData) => Promise<void>;
   readonly defaults: {
@@ -68,9 +70,9 @@ export function SiteSettingsForm({ action, defaults }: SiteSettingsFormProps) {
         页脚副文案
         <textarea defaultValue={defaults.footerSecondary} name="footerSecondary" required rows={3} />
       </label>
-      <button className="button button--primary" type="submit">
+      <SubmitButton className="button button--primary" pendingChildren="保存中...">
         保存站点设置
-      </button>
+      </SubmitButton>
     </form>
   );
 }

@@ -1,4 +1,5 @@
 import type { Category } from "@/generated/prisma/client";
+import { SubmitButton } from "@/components/submit-button";
 
 type CategoryEditorProps = {
   readonly action: (formData: FormData) => Promise<void>;
@@ -23,9 +24,9 @@ export function CategoryEditor({ action, category }: CategoryEditorProps) {
         描述
         <textarea defaultValue={category?.description ?? ""} name="description" rows={4} />
       </label>
-      <button className="button button--primary" type="submit">
+      <SubmitButton className="button button--primary" pendingChildren="保存中...">
         保存
-      </button>
+      </SubmitButton>
     </form>
   );
 }

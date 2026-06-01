@@ -1,6 +1,7 @@
 import Link from "next/link";
 
 import { AdminNav } from "@/app/admin/admin-nav";
+import { SubmitButton } from "@/components/submit-button";
 import { toAdminPath } from "@/lib/admin-path";
 import { prisma } from "@/lib/prisma";
 import { requireAdmin } from "@/lib/session";
@@ -47,9 +48,9 @@ export default async function AdminTagsPage({ searchParams }: AdminTagsPageProps
         </div>
         <form className="admin-filters admin-filters--compact">
           <input defaultValue={query} name="q" placeholder="搜索标签名或 slug" type="search" />
-          <button className="button button--ghost" type="submit">
+          <SubmitButton className="button button--ghost" pendingChildren="筛选中...">
             筛选
-          </button>
+          </SubmitButton>
         </form>
         <div className="admin-table">
           {tags.map((tag) => (
