@@ -5,7 +5,7 @@ import { ThemeToggle } from "@/components/theme-toggle";
 import { getSiteSettings } from "@/lib/site-settings";
 
 const NAV_ITEMS = [
-  { href: "/", label: "文章" },
+  { href: "/", label: "首页" },
   { href: "/about", label: "关于" },
 ] as const;
 
