@@ -145,13 +145,19 @@ npm run test:e2e
 npm test
 ```
 
-发布前完整检查：
+发布前完整检查（不包含构建）：
+
+```sh
+npm run check:ci
+```
+
+发布前完整检查并构建：
 
 ```sh
 npm run test:ci
 ```
 
-`test:ci` 会依次运行 lint、typecheck、build、单元测试、集成测试和 E2E 测试。
+`check:ci` 会依次运行 lint、typecheck、单元测试、集成测试和 E2E 测试。`test:ci` 会在 `check:ci` 通过后再执行 build。
 
 ## 生产部署
 
@@ -214,19 +220,22 @@ Start Command: npx next start
 1. GitHub Actions 启动 PostgreSQL 测试服务。
 2. 执行 `npm ci`。
 3. 安装 Playwright Chromium。
-4. 执行 `npm run test:ci`。
-5. 检查通过后，通过 SSH 登录服务器。
-6. 服务器进入项目目录，拉取当前提交、安装依赖、执行生产迁移、构建并重载 PM2 应用。
+4. 执行 `npm run check:ci`。
+5. 检查通过后，GitHub Actions 执行 `npm run build` 并打包 `.next/standalone` 产物。
+6. GitHub Actions 通过 SSH 上传产物压缩包到服务器。
+7. 服务器解压到 `DEPLOY_PATH/releases/<commit-sha>`，复制服务器本地维护的 `.env` / `.env.production`。
+8. 服务器执行生产数据库迁移，切换 `DEPLOY_PATH/current` 软链接，并通过 PM2 启动或重载 `server.js`。
 
 服务器前置条件：
 
 - 已安装 Node.js 24 或兼容版本。
-- 已安装 npm。
 - 已安装 PM2。
-- 服务器上的项目目录已经是该 GitHub 仓库的 git clone。
+- 已安装 `tar`、`bash`、`ssh` 等基础命令。
 - 服务器可以访问生产 PostgreSQL。
-- 服务器项目目录中已经配置好生产 `.env`。
-- PM2 中已经存在应用，例如：
+- `DEPLOY_PATH` 目录存在，且部署用户有写入权限。
+- `DEPLOY_PATH/.env` 或 `DEPLOY_PATH/.env.production` 已经配置好生产环境变量。
+- Nginx 反向代理到 PM2 使用的 `127.0.0.1:3000`，或按需调整 workflow 中的 `PORT`。
+- PM2 首次可以由 workflow 自动创建应用；也可以提前手动创建，例如：
 
 ```sh
 pm2 start "npx next start -p 3000" --name prelog
@@ -244,21 +253,18 @@ DEPLOY_PORT     SSH 端口，可选，默认 22
 PM2_APP_NAME    PM2 应用名，可选，默认 prelog
 ```
 
-部署 job 在服务器上执行：
+部署 job 在服务器上执行的核心动作：
 
 ```sh
-git fetch origin "$RELEASE_SHA"
-git reset --hard "$RELEASE_SHA"
-npm ci
-npx prisma migrate deploy
-npm run build
-pm2 reload "$PM2_APP_NAME" --update-env
+tar -xzf "$REMOTE_TAR" -C "$RELEASE_DIR"
+ln -sfn "$RELEASE_DIR" "$DEPLOY_PATH/current"
+node node_modules/prisma/build/index.js migrate deploy --config ./prisma.config.ts
+pm2 startOrReload ecosystem.config.cjs --update-env
 ```
 
 注意：
 
 - `DEPLOY_KEY` 对应的公钥需要加入服务器用户的 `~/.ssh/authorized_keys`。
-- 如果仓库是私有仓库，服务器也需要有权限执行 `git fetch`。可以给服务器配置 GitHub deploy key，或者使用有权限的 SSH/HTTPS remote。
 - 生产 `.env` 不应该由 GitHub Actions 写入服务器，建议直接在服务器上维护。
 - 当前工作流按 PM2 部署编写。如果服务器使用 Docker、systemd 或面板托管，需要替换 deploy job 的远程命令。
 
@@ -280,6 +286,7 @@ npm run test:unit
 npm run test:integration
 npm run test:e2e
 npm test
+npm run check:ci
 npm run test:ci
 npm run prisma:generate
 npm run prisma:migrate

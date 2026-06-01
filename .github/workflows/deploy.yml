@@ -63,7 +63,7 @@ jobs:
         run: npx playwright install --with-deps chromium
 
       - name: Run checks
-        run: npm run test:ci
+        run: npm run check:ci
 
   build:
     name: Build
@@ -120,12 +120,48 @@ jobs:
             cp prisma.config.ts release/prisma.config.ts
           fi
 
-          mkdir -p release/node_modules/@prisma
-          cp -r node_modules/prisma release/node_modules/prisma
+          node <<'NODE' > prisma-release-packages.txt
+          const fs = require("fs");
+          const lock = JSON.parse(fs.readFileSync("package-lock.json", "utf8"));
+          const packages = lock.packages;
+          const seen = new Set();
+          const pending = ["node_modules/prisma"];
 
-          for package in config debug engines engines-version fetch-engine get-platform; do
-            cp -r "node_modules/@prisma/${package}" "release/node_modules/@prisma/${package}"
-          done
+          while (pending.length > 0) {
+            const packagePath = pending.pop();
+            if (!packagePath || seen.has(packagePath)) {
+              continue;
+            }
+
+            const packageInfo = packages[packagePath];
+            if (!packageInfo) {
+              throw new Error(`Missing package-lock entry for ${packagePath}`);
+            }
+
+            seen.add(packagePath);
+
+            const dependencies = {
+              ...(packageInfo.dependencies ?? {}),
+              ...(packageInfo.optionalDependencies ?? {}),
+            };
+
+            for (const name of Object.keys(dependencies)) {
+              const dependencyPath = `node_modules/${name}`;
+              if (packages[dependencyPath]) {
+                pending.push(dependencyPath);
+              }
+            }
+          }
+
+          for (const packagePath of [...seen].sort()) {
+            console.log(packagePath);
+          }
+          NODE
+
+          while IFS= read -r package_path; do
+            mkdir -p "release/$(dirname "$package_path")"
+            cp -r "$package_path" "release/$package_path"
+          done < prisma-release-packages.txt
 
           tar -czf release.tar.gz -C release .
 
@@ -225,11 +261,11 @@ jobs:
 
           echo "Using PM2: $PM2_BIN"
           echo "Using Node: $(command -v node || true)"
-          echo "Using NPM: $(command -v npm || true)"
 
           RELEASE_DIR="$DEPLOY_PATH/releases/$RELEASE_SHA"
           CURRENT_LINK="$DEPLOY_PATH/current"
 
+          rm -rf "$RELEASE_DIR"
           mkdir -p "$RELEASE_DIR"
 
           tar -xzf "$REMOTE_TAR" -C "$RELEASE_DIR"
@@ -242,19 +278,17 @@ jobs:
             cp "$DEPLOY_PATH/.env.production" "$RELEASE_DIR/.env.production"
           fi
 
-          ln -sfn "$RELEASE_DIR" "$CURRENT_LINK"
-
-          cd "$CURRENT_LINK"
+          cd "$RELEASE_DIR"
 
           if [ -f node_modules/prisma/build/index.js ] && [ -d prisma ]; then
             set -a
 
-            if [ -f "$CURRENT_LINK/.env" ]; then
-              . "$CURRENT_LINK/.env"
+            if [ -f "$RELEASE_DIR/.env" ]; then
+              . "$RELEASE_DIR/.env"
             fi
 
-            if [ -f "$CURRENT_LINK/.env.production" ]; then
-              . "$CURRENT_LINK/.env.production"
+            if [ -f "$RELEASE_DIR/.env.production" ]; then
+              . "$RELEASE_DIR/.env.production"
             fi
 
             set +a
@@ -280,6 +314,14 @@ jobs:
 
             node node_modules/prisma/build/index.js migrate deploy --config ./prisma.config.ts
           fi
+
+          if [ -e "$CURRENT_LINK" ] && [ ! -L "$CURRENT_LINK" ]; then
+            echo "$CURRENT_LINK exists and is not a symlink"
+            exit 1
+          fi
+
+          ln -sfn "$RELEASE_DIR" "$CURRENT_LINK"
+          cd "$CURRENT_LINK"
 
           cat > ecosystem.config.cjs <<EOC
           module.exports = {
