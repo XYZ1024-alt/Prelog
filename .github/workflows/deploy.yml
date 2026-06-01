@@ -73,12 +73,12 @@ jobs:
     if: github.ref == 'refs/heads/main'
     env:
       NODE_ENV: production
-      NEXTAUTH_URL: ${{ secrets.NEXTAUTH_URL }}
-      AUTH_SECRET: ${{ secrets.AUTH_SECRET }}
-      DATABASE_URL: ${{ secrets.DATABASE_URL }}
-      ADMIN_EMAIL: ${{ secrets.ADMIN_EMAIL }}
-      ADMIN_PASSWORD: ${{ secrets.ADMIN_PASSWORD }}
-      ADMIN_PATH: ${{ secrets.ADMIN_PATH }}
+      NEXTAUTH_URL: https://iloveprc.com
+      AUTH_SECRET: build-time-placeholder-auth-secret-at-least-32-chars
+      DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/prelog_build?schema=public
+      ADMIN_EMAIL: admin@example.com
+      ADMIN_PASSWORD: BuildOnlyPassword123!
+      ADMIN_PATH: /admin
     steps:
       - name: Checkout
         uses: actions/checkout@v4
