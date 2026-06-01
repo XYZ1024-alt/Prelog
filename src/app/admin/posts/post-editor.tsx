@@ -16,6 +16,11 @@ type EditorProps = {
   readonly post?: PostWithTags;
 };
 
+type PostEditorFormProps = EditorProps & {
+  readonly draftKey: string;
+  readonly initialFields: PostDraftFields;
+};
+
 type PostDraftFields = {
   readonly categoryId: string;
   readonly content: string;
@@ -36,10 +41,22 @@ const DRAFT_DELAY_MS = 900;
 export function PostEditor({ action, categories, post }: EditorProps) {
   const draftKey = post ? `post:${post.id}` : "post:new";
   const initialFields = useMemo(() => createInitialFields(post), [post]);
+
+  return (
+    <PostEditorForm
+      action={action}
+      categories={categories}
+      draftKey={draftKey}
+      initialFields={initialFields}
+      key={draftKey}
+      post={post}
+    />
+  );
+}
+
+function PostEditorForm({ action, categories, draftKey, initialFields, post }: PostEditorFormProps) {
   const [fields, setFields] = useState(initialFields);
   const draft = usePostFormDraft({ baselineTimestamp: post?.updatedAt.getTime(), draftKey, fields, initialFields, setFields });
-
-  useEffect(() => setFields(initialFields), [draftKey, initialFields]);
 
   return (
     <form action={action} className="post-editor">
@@ -133,23 +150,24 @@ function usePostFormDraft(options: {
   readonly initialFields: PostDraftFields;
   readonly setFields: Dispatch<SetStateAction<PostDraftFields>>;
 }) {
-  const storageKey = `prelog:post-form-draft:${DRAFT_STORAGE_VERSION}:${options.draftKey}`;
-  const legacyContentKey = `prelog:draft:${LEGACY_CONTENT_DRAFT_VERSION}:${options.draftKey}`;
+  const { baselineTimestamp, draftKey, fields, initialFields, setFields } = options;
+  const storageKey = `prelog:post-form-draft:${DRAFT_STORAGE_VERSION}:${draftKey}`;
+  const legacyContentKey = `prelog:draft:${LEGACY_CONTENT_DRAFT_VERSION}:${draftKey}`;
   const [remoteDraft, setRemoteDraft] = useState<DraftState | null>(null);
   const [loaded, setLoaded] = useState(false);
   const [status, setStatus] = useState("本地草稿准备中");
   const restoredValueRef = useRef<string | null>(null);
-  const initialValue = useMemo(() => serializeFields(options.initialFields), [options.initialFields]);
-  const value = useMemo(() => serializeFields(options.fields), [options.fields]);
+  const initialValue = useMemo(() => serializeFields(initialFields), [initialFields]);
+  const value = useMemo(() => serializeFields(fields), [fields]);
 
-  useResetDraftState({ draftKey: options.draftKey, setLoaded, setRemoteDraft, setStatus, storageKey });
-  useLoadPostDraft({ ...options, initialValue, legacyContentKey, loaded, restoredValueRef, setLoaded, setRemoteDraft, setStatus, storageKey });
+  useResetDraftState({ draftKey, setLoaded, setRemoteDraft, setStatus, storageKey });
+  useLoadPostDraft({ baselineTimestamp, initialFields, initialValue, legacyContentKey, loaded, setLoaded, setRemoteDraft, setStatus, storageKey });
   useSavePostDraft({ initialValue, loaded, restoredValueRef, setRemoteDraft, setStatus, storageKey, value });
 
   return {
     clear: () => clearPostDraft({ setRemoteDraft, setStatus, storageKey }),
     hasRemoteDraft: Boolean(remoteDraft && remoteDraft.value !== value),
-    restore: () => restorePostDraft({ remoteDraft, restoredValueRef, setFields: options.setFields, setStatus }),
+    restore: () => restorePostDraft({ remoteDraft, restoredValueRef, setFields, setStatus }),
     status,
   };
 }
@@ -161,45 +179,45 @@ function useResetDraftState(options: {
   readonly setStatus: (status: string) => void;
   readonly storageKey: string;
 }) {
+  const { draftKey, setLoaded, setRemoteDraft, setStatus, storageKey } = options;
+
   useEffect(() => {
-    options.setLoaded(false);
-    options.setRemoteDraft(null);
-    options.setStatus("本地草稿准备中");
-  }, [options.draftKey, options.setLoaded, options.setRemoteDraft, options.setStatus, options.storageKey]);
+    setLoaded(false);
+    setRemoteDraft(null);
+    setStatus("本地草稿准备中");
+  }, [draftKey, setLoaded, setRemoteDraft, setStatus, storageKey]);
 }
 
 function useLoadPostDraft(options: {
   readonly baselineTimestamp?: number;
-  readonly draftKey: string;
-  readonly fields: PostDraftFields;
   readonly initialFields: PostDraftFields;
   readonly initialValue: string;
   readonly legacyContentKey: string;
   readonly loaded: boolean;
-  readonly restoredValueRef: MutableRefObject<string | null>;
-  readonly setFields: Dispatch<SetStateAction<PostDraftFields>>;
   readonly setLoaded: (loaded: boolean) => void;
   readonly setRemoteDraft: (draft: DraftState | null) => void;
   readonly setStatus: (status: string) => void;
   readonly storageKey: string;
 }) {
+  const { baselineTimestamp, initialFields, initialValue, legacyContentKey, loaded, setLoaded, setRemoteDraft, setStatus, storageKey } =
+    options;
+
   useEffect(() => {
-    if (options.loaded) {
+    if (loaded) {
       return;
     }
 
-    loadPostDraft(options);
-  }, [
-    options.baselineTimestamp,
-    options.initialFields,
-    options.initialValue,
-    options.legacyContentKey,
-    options.loaded,
-    options.setLoaded,
-    options.setRemoteDraft,
-    options.setStatus,
-    options.storageKey,
-  ]);
+    loadPostDraft({
+      baselineTimestamp,
+      initialFields,
+      initialValue,
+      legacyContentKey,
+      setLoaded,
+      setRemoteDraft,
+      setStatus,
+      storageKey,
+    });
+  }, [baselineTimestamp, initialFields, initialValue, legacyContentKey, loaded, setLoaded, setRemoteDraft, setStatus, storageKey]);
 }
 
 function useSavePostDraft(options: {
@@ -211,36 +229,30 @@ function useSavePostDraft(options: {
   readonly storageKey: string;
   readonly value: string;
 }) {
+  const { initialValue, loaded, restoredValueRef, setRemoteDraft, setStatus, storageKey, value } = options;
+
   useEffect(() => {
-    if (!options.loaded) {
+    if (!loaded) {
       return;
     }
 
-    const saveState = getDraftSaveState({ initialValue: options.initialValue, restoredValue: options.restoredValueRef.current, value: options.value });
+    const saveState = getDraftSaveState({ initialValue, restoredValue: restoredValueRef.current, value });
 
     if (saveState === "synced") {
-      options.setStatus("当前内容与已保存版本一致");
+      setStatus("当前内容与已保存版本一致");
       return;
     }
 
     if (saveState === "restored") {
-      options.restoredValueRef.current = null;
-      options.setStatus("已恢复本地草稿");
+      restoredValueRef.current = null;
+      setStatus("已恢复本地草稿");
       return;
     }
 
-    options.setStatus("正在保存本地草稿");
-    const id = window.setTimeout(() => savePostDraft(options), DRAFT_DELAY_MS);
+    setStatus("正在保存本地草稿");
+    const id = window.setTimeout(() => savePostDraft({ setRemoteDraft, setStatus, storageKey, value }), DRAFT_DELAY_MS);
     return () => window.clearTimeout(id);
-  }, [
-    options.initialValue,
-    options.loaded,
-    options.restoredValueRef,
-    options.setRemoteDraft,
-    options.setStatus,
-    options.storageKey,
-    options.value,
-  ]);
+  }, [initialValue, loaded, restoredValueRef, setRemoteDraft, setStatus, storageKey, value]);
 }
 
 function loadPostDraft(options: {
