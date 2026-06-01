@@ -16,12 +16,13 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 20
     services:
-      postgres:
-        image: postgres:16
-        env:
-          POSTGRES_DB: prelog_test
-          POSTGRES_PASSWORD: postgres
-          POSTGRES_USER: postgres
+      services:
+        postgres:
+          image: postgres:16
+          env:
+            POSTGRES_DB: prelog_ci
+            POSTGRES_PASSWORD: postgres
+            POSTGRES_USER: postgres
         options: >-
           --health-cmd "pg_isready -U postgres -d prelog_test"
           --health-interval 10s
@@ -49,6 +50,12 @@ jobs:
 
       - name: Install dependencies
         run: npm ci
+
+      - name: Create test database
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y postgresql-client
+          PGPASSWORD=postgres psql -h 127.0.0.1 -U postgres -d postgres -c "CREATE DATABASE prelog_test;" || true
 
       - name: Install Playwright Chromium
         run: npx playwright install --with-deps chromium
