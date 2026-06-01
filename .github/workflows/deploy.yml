@@ -138,7 +138,7 @@ jobs:
         with:
           name: prelog-release
 
-            - name: Deploy over SSH
+      - name: Deploy over SSH
         env:
           DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
           DEPLOY_KEY: ${{ secrets.DEPLOY_KEY }}
