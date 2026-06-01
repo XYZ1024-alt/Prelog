@@ -488,6 +488,25 @@ p {
   opacity: 0.68;
 }
 
+.button[aria-busy="true"]::before,
+.admin-nav__signout[aria-busy="true"]::before {
+  animation: button-spinner 0.75s linear infinite;
+  border: 2px solid currentColor;
+  border-right-color: transparent;
+  border-radius: 999px;
+  content: "";
+  display: inline-block;
+  flex: 0 0 auto;
+  height: 14px;
+  width: 14px;
+}
+
+@keyframes button-spinner {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
 .button--primary {
   background: var(--brand-blue);
   border-color: var(--brand-blue);

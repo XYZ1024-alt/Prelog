@@ -57,7 +57,7 @@ export function CommentForm(props: CommentFormProps) {
         <textarea name="body" required rows={5} />
       </label>
       {state.message ? <p className={state.ok ? "form-success" : "form-error"}>{state.message}</p> : null}
-      <button className="button button--primary" disabled={pending} type="submit">
+      <button aria-busy={pending} className="button button--primary" disabled={pending} type="submit">
         {pending ? "提交中" : "提交审核"}
       </button>
     </form>

@@ -120,6 +120,13 @@ jobs:
             cp prisma.config.ts release/prisma.config.ts
           fi
 
+          mkdir -p release/node_modules/@prisma
+          cp -r node_modules/prisma release/node_modules/prisma
+
+          for package in config debug engines engines-version fetch-engine get-platform; do
+            cp -r "node_modules/@prisma/${package}" "release/node_modules/@prisma/${package}"
+          done
+
           tar -czf release.tar.gz -C release .
 
       - name: Upload release artifact
@@ -239,7 +246,7 @@ jobs:
 
           cd "$CURRENT_LINK"
 
-          if command -v npx >/dev/null 2>&1 && [ -d prisma ]; then
+          if [ -f node_modules/prisma/build/index.js ] && [ -d prisma ]; then
             set -a
 
             if [ -f "$CURRENT_LINK/.env" ]; then
@@ -271,7 +278,7 @@ jobs:
             echo "Current prisma.config.ts:"
             sed -n '1,30p' prisma.config.ts
 
-            npx prisma migrate deploy --config ./prisma.config.ts
+            node node_modules/prisma/build/index.js migrate deploy --config ./prisma.config.ts
           fi
 
           cat > ecosystem.config.cjs <<EOC
