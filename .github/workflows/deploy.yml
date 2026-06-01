@@ -252,6 +252,25 @@ jobs:
 
             set +a
 
+            : "${DATABASE_URL:?DATABASE_URL is required}"
+
+            cat > prisma.config.ts <<'EOP'
+          import { defineConfig, env } from "prisma/config";
+
+          export default defineConfig({
+            schema: "prisma/schema.prisma",
+            migrations: {
+              path: "prisma/migrations",
+            },
+            datasource: {
+              url: env("DATABASE_URL"),
+            },
+          });
+          EOP
+
+            echo "Current prisma.config.ts:"
+            sed -n '1,30p' prisma.config.ts
+
             npx prisma migrate deploy --config ./prisma.config.ts
           fi
 
