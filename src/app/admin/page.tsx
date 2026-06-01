@@ -43,13 +43,13 @@ export default async function AdminIndexPage() {
         </section>
         <section className="admin-card">
           <div className="admin-card__head">
-            <h2>管理员账号</h2>
-            <span>单管理员模式</span>
+            <h2>管理员资料</h2>
+            <span>后台登录信息</span>
           </div>
           <div className="admin-owner-card">
             <strong>{user.name ?? "Prelog Admin"}</strong>
             <p>{user.email}</p>
-            <span>后台只保留这一个管理员账号，不提供用户列表和角色分配。</span>
+            <span>可在设置页更新登录邮箱、显示名称和密码。</span>
           </div>
         </section>
       </section>

@@ -29,8 +29,8 @@ export default async function AdminSettingsPage({ searchParams }: SettingsPagePr
 
         <section className="admin-card admin-card--settings">
           <div className="admin-card__head">
-            <h2>单管理员账号</h2>
-            <span>个人后台模式</span>
+            <h2>管理员资料</h2>
+            <span>登录信息</span>
           </div>
           <div className="admin-settings-note">
             <ShieldCheck size={16} />

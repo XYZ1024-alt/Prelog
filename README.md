@@ -59,7 +59,7 @@ ADMIN_PASSWORD="replace-with-a-strong-password"
 - `AUTH_SECRET`：NextAuth 会话签名密钥，生产环境必须使用足够长的随机值。
 - `NEXTAUTH_URL`：站点访问地址。本地通常是 `http://127.0.0.1:3000`，生产环境应改成正式域名。
 - `ADMIN_PATH`：后台入口别名，例如 `/studio-x9`。应用内部仍使用 `/admin` 路由结构，对外访问走该别名。
-- `ADMIN_EMAIL` / `ADMIN_PASSWORD`：只在执行 seed 时注入数据库。后续在后台修改管理员邮箱或密码，不会回写 `.env`。再次执行 seed 会用 `.env` 的值覆盖管理员账号。
+- `ADMIN_EMAIL` / `ADMIN_PASSWORD`：用于 seed 时写入后台登录资料。后续在后台修改邮箱或密码，不会回写 `.env`。再次执行 seed 会用 `.env` 的值更新登录资料。
 
 生成强随机 `AUTH_SECRET`：
 
@@ -93,7 +93,7 @@ npm run prisma:generate
 npm run prisma:migrate
 ```
 
-初始化管理员、站点设置和示例数据：
+初始化后台登录资料、站点设置和示例数据：
 
 ```sh
 npm run prisma:seed
@@ -271,7 +271,7 @@ pm2 startOrReload ecosystem.config.cjs --update-env
 注意：
 
 - `prisma migrate deploy` 应在生产数据库上执行，用于应用已提交的迁移。
-- `prisma:seed` 会创建或更新固定管理员账号、站点设置和示例文章。生产环境首次初始化后，如果已经在后台修改过管理员账号，重复执行 seed 会按 `.env` 覆盖管理员邮箱和密码。
+- `prisma:seed` 会写入后台登录资料、站点设置和示例文章。生产环境首次初始化后，如果已经在后台修改过邮箱或密码，重复执行 seed 会按 `.env` 更新这些登录资料。
 - 因为页面运行期查库，生产服务必须能持续访问数据库。
 - `ADMIN_PATH` 不是权限机制，只是隐藏后台入口；真正的后台访问仍依赖 NextAuth 登录态。
 

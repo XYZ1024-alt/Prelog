@@ -10,7 +10,7 @@ export default function LoginPage() {
       <section className="admin-login__panel">
         <span className="eyebrow">Admin</span>
         <h1>登录后台</h1>
-        <p className="admin-login__intro">这是个人后台入口，仅保留一个管理员账号，不提供注册和多用户管理。</p>
+        <p className="admin-login__intro">这是后台入口，请使用管理员凭据登录。</p>
         <Suspense>
           <LoginForm />
         </Suspense>
