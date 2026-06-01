@@ -205,6 +205,63 @@ Build Command: npm run build
 Start Command: npx next start
 ```
 
+## GitHub Actions 自动部署
+
+仓库包含 `.github/workflows/deploy.yml`，用于在 push 到 `main` 后自动检查并部署到服务器。
+
+流程：
+
+1. GitHub Actions 启动 PostgreSQL 测试服务。
+2. 执行 `npm ci`。
+3. 安装 Playwright Chromium。
+4. 执行 `npm run test:ci`。
+5. 检查通过后，通过 SSH 登录服务器。
+6. 服务器进入项目目录，拉取当前提交、安装依赖、执行生产迁移、构建并重载 PM2 应用。
+
+服务器前置条件：
+
+- 已安装 Node.js 24 或兼容版本。
+- 已安装 npm。
+- 已安装 PM2。
+- 服务器上的项目目录已经是该 GitHub 仓库的 git clone。
+- 服务器可以访问生产 PostgreSQL。
+- 服务器项目目录中已经配置好生产 `.env`。
+- PM2 中已经存在应用，例如：
+
+```sh
+pm2 start "npx next start -p 3000" --name prelog
+pm2 save
+```
+
+GitHub 仓库需要配置以下 Secrets：
+
+```text
+DEPLOY_HOST     服务器 IP 或域名
+DEPLOY_USER     SSH 用户名
+DEPLOY_KEY      SSH 私钥内容
+DEPLOY_PATH     服务器上的项目目录，例如 /var/www/prelog
+DEPLOY_PORT     SSH 端口，可选，默认 22
+PM2_APP_NAME    PM2 应用名，可选，默认 prelog
+```
+
+部署 job 在服务器上执行：
+
+```sh
+git fetch origin "$RELEASE_SHA"
+git reset --hard "$RELEASE_SHA"
+npm ci
+npx prisma migrate deploy
+npm run build
+pm2 reload "$PM2_APP_NAME" --update-env
+```
+
+注意：
+
+- `DEPLOY_KEY` 对应的公钥需要加入服务器用户的 `~/.ssh/authorized_keys`。
+- 如果仓库是私有仓库，服务器也需要有权限执行 `git fetch`。可以给服务器配置 GitHub deploy key，或者使用有权限的 SSH/HTTPS remote。
+- 生产 `.env` 不应该由 GitHub Actions 写入服务器，建议直接在服务器上维护。
+- 当前工作流按 PM2 部署编写。如果服务器使用 Docker、systemd 或面板托管，需要替换 deploy job 的远程命令。
+
 注意：
 
 - `prisma migrate deploy` 应在生产数据库上执行，用于应用已提交的迁移。
