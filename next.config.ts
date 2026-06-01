@@ -1,6 +1,7 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
+  output: "standalone",
   env: {
     ADMIN_PATH: process.env.ADMIN_PATH ?? "/admin",
   },
