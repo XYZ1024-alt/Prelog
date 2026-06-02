@@ -4,6 +4,7 @@ import { NextResponse } from "next/server";
 import { isAdminPath, PUBLIC_ADMIN_PATH, toInternalAdminPath, usesCustomAdminPath } from "@/lib/admin-path";
 
 const INTERNAL_ADMIN_REWRITE_HEADER = "x-prelog-admin-rewrite";
+const LOCAL_REWRITE_HOSTS = new Set(["localhost", "127.0.0.1", "::1"]);
 
 export function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
@@ -29,7 +30,16 @@ export function middleware(request: NextRequest) {
   const headers = new Headers(request.headers);
   headers.set(INTERNAL_ADMIN_REWRITE_HEADER, PUBLIC_ADMIN_PATH);
   url.pathname = toInternalAdminPath(suffix);
+  normalizeLocalRewriteProtocol(url);
   return NextResponse.rewrite(url, { request: { headers } });
+}
+
+function normalizeLocalRewriteProtocol(url: URL) {
+  if (!LOCAL_REWRITE_HOSTS.has(url.hostname)) {
+    return;
+  }
+
+  url.protocol = "http";
 }
 
 export const config = {
