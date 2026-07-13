@@ -67,6 +67,7 @@ async function createManualPost(page: Page, disallowedRequests: readonly string[
   await page.goto(`${ADMIN_PATH}/posts/new`);
   await fillRequiredPostFields(page, MANUAL_POST, "A manual cover used to audit every public image surface.");
   await page.locator('select[name="categoryId"]').selectOption({ label: "Engineering" });
+  await expect(page.locator(".post-cover-mode")).toHaveAttribute("data-client-ready", "true");
   await page.locator('input[name="coverMode"][value="MANUAL"]').check();
 
   const coverInput = page.locator('input[name="coverImage"]');

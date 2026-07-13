@@ -259,6 +259,7 @@ test("lets an administrator create and publish a post", async ({ page }) => {
   await expect(page.locator(".article-meta time")).toHaveAttribute("datetime", lockedPublishedAt!);
 
   await page.goto(editUrl);
+  await expect(page.locator(".post-cover-mode")).toHaveAttribute("data-client-ready", "true");
   await page.locator('input[name="coverMode"][value="MANUAL"]').check();
   await page.locator('input[name="coverImage"]').fill("https://example.com/cover.png");
   await page.locator("form.post-editor > button[type='submit']").click();
@@ -267,6 +268,7 @@ test("lets an administrator create and publish a post", async ({ page }) => {
   const manualModifiedAt = await page.locator('meta[property="article:modified_time"]').getAttribute("content");
   expect(manualModifiedAt).toBeTruthy();
   await page.goto(editUrl);
+  await expect(page.locator(".post-cover-mode")).toHaveAttribute("data-client-ready", "true");
   await page.locator('input[name="coverMode"][value="GLYPH"]').check();
   await page.locator(".post-cover-glyph__regenerate").click();
   await expect(page).toHaveURL(/cover=regenerated/);

@@ -7,6 +7,7 @@ import { useRouter } from "next/navigation";
 import { regeneratePostGlyphCoverWithState } from "@/app/admin/posts/actions";
 import { ArticleGlyph } from "@/components/article-glyph";
 import { ButtonStateContent } from "@/components/button-state-content";
+import { useClientMounted } from "@/components/use-client-mounted";
 import { useDebouncedValue } from "@/components/use-debounced-value";
 import {
   createArticleGlyphRecipe,
@@ -51,6 +52,7 @@ const getClientReadySnapshot = () => true;
 const getServerReadySnapshot = () => false;
 
 export function PostCoverEditor(props: PostCoverEditorProps) {
+  const clientMounted = useClientMounted();
   const debouncedContent = useDebouncedValue(props.content, COVER_SIGNAL_DEBOUNCE_MS);
   const signals = useMemo(
     () => createCandidateSignals(debouncedContent),
@@ -80,7 +82,11 @@ export function PostCoverEditor(props: PostCoverEditorProps) {
           <span className="eyebrow">Cover System</span>
           <h2>文章封面</h2>
         </div>
-        <CoverModeControl mode={props.coverMode} onChange={props.onCoverModeChange} />
+        <CoverModeControl
+          clientMounted={clientMounted}
+          mode={props.coverMode}
+          onChange={props.onCoverModeChange}
+        />
       </header>
       <div className="post-cover-editor__panel" key={props.coverMode}>
         {props.coverMode === "MANUAL" ? (
@@ -107,9 +113,22 @@ export function PostCoverEditor(props: PostCoverEditorProps) {
   );
 }
 
-function CoverModeControl({ mode, onChange }: { readonly mode: CoverMode; readonly onChange: (value: CoverMode) => void }) {
+function CoverModeControl({
+  clientMounted,
+  mode,
+  onChange,
+}: {
+  readonly clientMounted: boolean;
+  readonly mode: CoverMode;
+  readonly onChange: (value: CoverMode) => void;
+}) {
   return (
-    <fieldset aria-label="封面模式" className="post-cover-mode">
+    <fieldset
+      aria-label="封面模式"
+      className="post-cover-mode"
+      data-client-ready={clientMounted}
+      disabled={!clientMounted}
+    >
       <label className={mode === "GLYPH" ? "is-active" : undefined}>
         <input checked={mode === "GLYPH"} name="coverMode" onChange={() => onChange("GLYPH")} type="radio" value="GLYPH" />
         <ScanLine size={16} />
