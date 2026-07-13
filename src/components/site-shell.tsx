@@ -1,11 +1,13 @@
 import Link from "next/link";
-import { PenLine, Search } from "lucide-react";
+import { Archive, PenLine, Rss, Search } from "lucide-react";
 
 import { ThemeToggle } from "@/components/theme-toggle";
 import { getSiteSettings } from "@/lib/site-settings";
 
 const NAV_ITEMS = [
-  { href: "/", label: "首页" },
+  { href: "/", label: "索引" },
+  { href: "/categories", label: "主题" },
+  { href: "/archive", label: "归档" },
   { href: "/about", label: "关于" },
 ] as const;
 
@@ -46,6 +48,16 @@ export async function SiteFooter() {
         <p>{settings.footerPrimary}</p>
         <p>{settings.footerSecondary}</p>
       </div>
+      <nav aria-label="页脚导航" className="site-footer__nav">
+        <Link href="/archive">
+          <Archive aria-hidden="true" size={15} />
+          文章归档
+        </Link>
+        <a href="/rss.xml">
+          <Rss aria-hidden="true" size={15} />
+          RSS 订阅
+        </a>
+      </nav>
     </footer>
   );
 }

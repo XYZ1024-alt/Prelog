@@ -1,17 +1,17 @@
 import type { Metadata } from "next";
 
-import { AnimatedPage } from "@/components/animated-page";
+import { PageShell } from "@/components/page-shell";
 import { TypographicAscii } from "@/components/typographic-ascii";
 import { getSiteSettings, splitAboutTopics } from "@/lib/site-settings";
-
-export const dynamic = "force-dynamic";
+import { createPageMetadataAlternates } from "@/lib/site-url";
 
 export async function generateMetadata(): Promise<Metadata> {
   const settings = await getSiteSettings();
 
   return {
-    title: "关于",
+    alternates: createPageMetadataAlternates("/about"),
     description: settings.aboutIntro,
+    title: "关于",
   };
 }
 
@@ -20,7 +20,7 @@ export default async function AboutPage() {
   const topics = splitAboutTopics(settings.aboutTopics);
 
   return (
-    <AnimatedPage>
+    <PageShell>
       <main>
         <section className="page-heading">
           <TypographicAscii text={`About ${settings.siteName}`} tone="compact" />
@@ -50,6 +50,6 @@ export default async function AboutPage() {
           </div>
         </section>
       </main>
-    </AnimatedPage>
+    </PageShell>
   );
 }

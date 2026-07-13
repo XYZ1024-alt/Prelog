@@ -6,6 +6,7 @@ const BASE_URL = `http://127.0.0.1:${E2E_PORT}`;
 export default defineConfig({
   testDir: "./tests/e2e",
   timeout: 30_000,
+  workers: 1,
   expect: {
     timeout: 10_000,
   },
@@ -19,9 +20,11 @@ export default defineConfig({
       ADMIN_PATH: process.env.ADMIN_PATH ?? "/admin",
       AUTH_SECRET: process.env.AUTH_SECRET ?? "test-auth-secret-at-least-32-characters",
       DATABASE_URL: process.env.DATABASE_URL_TEST ?? "",
+      MANUAL_COVER_HOSTS: process.env.MANUAL_COVER_HOSTS ?? "example.com",
       NEXTAUTH_URL: BASE_URL,
+      PRELOG_DISABLE_PUBLIC_CACHE: "true",
     },
-    reuseExistingServer: !process.env.CI,
+    reuseExistingServer: false,
     timeout: 120_000,
     url: BASE_URL,
   },

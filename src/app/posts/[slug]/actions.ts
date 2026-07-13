@@ -1,18 +1,42 @@
 "use server";
 
 import { headers } from "next/headers";
-import { revalidatePath } from "next/cache";
 
 import { moderateComment } from "@/lib/comment-moderation";
 import { prisma } from "@/lib/prisma";
+import { consumeRateLimit, type RateLimitPolicy } from "@/lib/rate-limit";
+import { getRequestIdentity } from "@/lib/request-identity";
 import { commentSchema } from "@/lib/validation";
 
 export type CommentFormState = {
+  readonly code?: "RATE_LIMITED";
   readonly message: string;
   readonly ok: boolean;
+  readonly retryAfterSeconds?: number;
+  readonly status?: number;
+};
+
+const COMMENT_GLOBAL_POLICY: RateLimitPolicy = {
+  limit: 12,
+  windowMs: 30 * 60 * 1000,
+};
+const COMMENT_POST_POLICY: RateLimitPolicy = {
+  limit: 4,
+  windowMs: 10 * 60 * 1000,
 };
 
 export async function addComment(_state: CommentFormState, formData: FormData): Promise<CommentFormState> {
+  const requestHeaders = await headers();
+  const identity = getRequestIdentity(requestHeaders, "comment");
+  const globalLimit = await consumeRateLimit({
+    ...COMMENT_GLOBAL_POLICY,
+    key: `comment:global:${identity.hash}`,
+  });
+
+  if (!globalLimit.allowed) {
+    return createRateLimitedState(globalLimit.retryAfterSeconds);
+  }
+
   const parsed = commentSchema.safeParse({
     postId: formData.get("postId"),
     slug: formData.get("slug"),
@@ -27,18 +51,24 @@ export async function addComment(_state: CommentFormState, formData: FormData): 
     return { message: "请检查昵称、邮箱和评论内容后再提交。", ok: false };
   }
 
+  const postLimit = await consumeRateLimit({
+    ...COMMENT_POST_POLICY,
+    key: `comment:post:${parsed.data.postId}:${identity.hash}`,
+  });
+
+  if (!postLimit.allowed) {
+    return createRateLimitedState(postLimit.retryAfterSeconds);
+  }
+
   const target = await getCommentTarget(parsed.data.postId, parsed.data.slug, parsed.data.parentId);
 
   if (!target.ok) {
     return { message: target.message, ok: false };
   }
 
-  const requestHeaders = await headers();
   const moderation = moderateComment({
     body: parsed.data.body,
     email: parsed.data.email,
-    ip: getClientIp(requestHeaders),
-    userAgent: requestHeaders.get("user-agent") ?? "",
     website: parsed.data.website,
   });
 
@@ -53,7 +83,6 @@ export async function addComment(_state: CommentFormState, formData: FormData): 
     },
   });
 
-  revalidatePath(`/posts/${parsed.data.slug}`);
   return { message: "评论已提交，审核通过后会显示。", ok: true };
 }
 
@@ -83,6 +112,12 @@ async function getCommentTarget(postId: string, slug: string, parentId?: string)
   return { ok: true } as const;
 }
 
-function getClientIp(headersList: Headers) {
-  return headersList.get("x-forwarded-for")?.split(",")[0]?.trim() ?? headersList.get("x-real-ip") ?? "";
+function createRateLimitedState(retryAfterSeconds: number): CommentFormState {
+  return {
+    code: "RATE_LIMITED",
+    message: `提交过于频繁，请在 ${retryAfterSeconds} 秒后重试。`,
+    ok: false,
+    retryAfterSeconds,
+    status: 429,
+  };
 }

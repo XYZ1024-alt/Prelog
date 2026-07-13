@@ -1,10 +1,6 @@
-import { createHash } from "node:crypto";
-
 type ModerationInput = {
   readonly body: string;
   readonly email: string;
-  readonly ip: string;
-  readonly userAgent: string;
   readonly website?: string;
 };
 
@@ -18,11 +14,9 @@ export function moderateComment(input: ModerationInput) {
   const spamScore = getSpamScore(input);
 
   return {
-    ipHash: hashIp(input.ip),
     moderationNote: getModerationNote(spamScore),
     spamScore,
     status: spamScore >= APPROVE_THRESHOLD ? "SPAM" as const : "PENDING" as const,
-    userAgent: input.userAgent.slice(0, 500),
   };
 }
 
@@ -53,12 +47,4 @@ function getModerationNote(score: number) {
   }
 
   return `待人工审核，垃圾分 ${score}`;
-}
-
-function hashIp(ip: string) {
-  if (!ip) {
-    return null;
-  }
-
-  return createHash("sha256").update(ip).digest("hex");
 }

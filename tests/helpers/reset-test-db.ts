@@ -37,8 +37,9 @@ function runMigrations(databaseUrl: string) {
 }
 
 async function clearDatabase(prisma: PrismaClient) {
+  await prisma.rateLimitBucket.deleteMany();
+  await prisma.analyticsDailyMetric.deleteMany();
   await prisma.comment.deleteMany();
-  await prisma.pageView.deleteMany();
   await prisma.postTag.deleteMany();
   await prisma.post.deleteMany();
   await prisma.tag.deleteMany();

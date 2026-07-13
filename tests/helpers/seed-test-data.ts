@@ -1,7 +1,8 @@
 import bcrypt from "bcryptjs";
 
-import type { PrismaClient } from "../../src/generated/prisma/client.ts";
+import { Prisma, type PrismaClient } from "../../src/generated/prisma/client.ts";
 import { ADMIN_USER_ID, SITE_SETTINGS_ID } from "../../src/lib/constants.ts";
+import { createArticleGlyphRecipe, createArticleGlyphSignals } from "../../src/lib/glyph-recipe.ts";
 
 export const TEST_ADMIN = {
   email: "admin@example.com",
@@ -47,18 +48,43 @@ export async function seedTestData(prisma: PrismaClient) {
   });
   await createPublishedPost(prisma, {
     categoryId: engineering.id,
-    content: "## Launch\n\nPrelog ships a public article powered by Next.js and Prisma.",
+    categoryName: engineering.name,
+    categorySlug: engineering.slug,
+    content: `## Launch
+
+Prelog ships a **public article** powered by reliable rendering, with [semantic links](https://example.com/docs) and \`inline code\`.
+
+> The visible article must preserve rich Markdown at every viewport.
+
+1. Keep one semantic tree.
+2. Keep every inline element.
+
+| Layer | Status |
+| --- | --- |
+| Markdown | Visible |
+
+\`\`\`ts
+const semantic = true;
+\`\`\`
+
+\`\`\`
+plain code
+
+with spacing
+\`\`\``,
     publishedAt: FIRST_PUBLISHED_AT,
     slug: TEST_POSTS.published.slug,
-    tagIds: [nextTag.id, prismaTag.id],
+    tags: [nextTag, prismaTag],
     title: TEST_POSTS.published.title,
   });
   await createPublishedPost(prisma, {
     categoryId: product.id,
+    categoryName: product.name,
+    categorySlug: product.slug,
     content: "## Search\n\nSearch quality uses category, tag, title, and body signals.",
     publishedAt: SECOND_PUBLISHED_AT,
     slug: TEST_POSTS.search.slug,
-    tagIds: [prismaTag.id],
+    tags: [prismaTag],
     title: TEST_POSTS.search.title,
   });
   await prisma.post.create({
@@ -87,14 +113,16 @@ async function createPublishedPost(
   prisma: PrismaClient,
   options: {
     readonly categoryId: string;
+    readonly categoryName: string;
+    readonly categorySlug: string;
     readonly content: string;
     readonly publishedAt: Date;
     readonly slug: string;
-    readonly tagIds: readonly string[];
+    readonly tags: readonly { readonly id: string; readonly name: string; readonly slug: string }[];
     readonly title: string;
   },
 ) {
-  await prisma.post.create({
+  const post = await prisma.post.create({
     data: {
       categoryId: options.categoryId,
       content: options.content,
@@ -103,8 +131,29 @@ async function createPublishedPost(
       readingMinutes: 1,
       slug: options.slug,
       status: "PUBLISHED",
-      tags: { create: options.tagIds.map((id) => ({ tag: { connect: { id } } })) },
+      tags: { create: options.tags.map(({ id }) => ({ tag: { connect: { id } } })) },
       title: options.title,
+    },
+  });
+  const recipe = createArticleGlyphRecipe({
+    category: options.categorySlug,
+    labels: {
+      category: options.categoryName,
+      tags: options.tags.map((tag) => tag.name),
+    },
+    postId: post.id,
+    signals: createArticleGlyphSignals(options.content),
+    tags: options.tags.map((tag) => tag.slug).sort(),
+    title: options.title,
+  });
+
+  await prisma.post.update({
+    where: { id: post.id },
+    data: {
+      glyphGeneratedAt: new Date(),
+      glyphRecipe: recipe as unknown as Prisma.InputJsonValue,
+      glyphSourceHash: recipe.sourceHash,
+      updatedAt: post.updatedAt,
     },
   });
 }

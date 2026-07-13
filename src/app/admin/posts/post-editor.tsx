@@ -1,19 +1,22 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState, type Dispatch, type MutableRefObject, type SetStateAction } from "react";
+import { useActionState, useEffect, useMemo, useRef, useState, type Dispatch, type MutableRefObject, type SetStateAction } from "react";
 
 import { MarkdownEditor } from "@/app/admin/posts/markdown-editor";
+import { PostCoverEditor } from "@/app/admin/posts/post-cover-editor";
 import { SubmitButton } from "@/components/submit-button";
 import type { Category, Post, PostTag, Tag } from "@/generated/prisma/client";
 import { getDraftLoadState, getDraftSaveState, type DraftState } from "@/lib/draft-logic";
+import type { PostMutationState } from "@/lib/post-workflow";
 
 type PostWithTags = Post & {
   readonly tags: (PostTag & { readonly tag: Tag })[];
 };
 
 type EditorProps = {
-  readonly action: (formData: FormData) => Promise<void>;
+  readonly action: (state: PostMutationState, formData: FormData) => Promise<PostMutationState>;
   readonly categories: readonly Category[];
+  readonly manualCoverHosts: readonly string[];
   readonly post?: PostWithTags;
 };
 
@@ -26,6 +29,7 @@ type PostDraftFields = {
   readonly categoryId: string;
   readonly content: string;
   readonly coverImage: string;
+  readonly coverMode: "GLYPH" | "MANUAL";
   readonly excerpt: string;
   readonly seoDescription: string;
   readonly seoTitle: string;
@@ -35,11 +39,12 @@ type PostDraftFields = {
   readonly title: string;
 };
 
-const DRAFT_STORAGE_VERSION = "v3";
+const DRAFT_STORAGE_VERSION = "v4";
 const LEGACY_CONTENT_DRAFT_VERSION = "v2";
 const DRAFT_DELAY_MS = 900;
+const INITIAL_MUTATION_STATE: PostMutationState = { status: "idle" };
 
-export function PostEditor({ action, categories, post }: EditorProps) {
+export function PostEditor({ action, categories, manualCoverHosts, post }: EditorProps) {
   const draftKey = post ? `post:${post.id}` : "post:new";
   const initialFields = useMemo(() => createInitialFields(post), [post]);
 
@@ -50,18 +55,26 @@ export function PostEditor({ action, categories, post }: EditorProps) {
       draftKey={draftKey}
       initialFields={initialFields}
       key={draftKey}
+      manualCoverHosts={manualCoverHosts}
       post={post}
     />
   );
 }
 
-function PostEditorForm({ action, categories, draftKey, initialFields, post }: PostEditorFormProps) {
+function PostEditorForm({ action, categories, draftKey, initialFields, manualCoverHosts, post }: PostEditorFormProps) {
   const [fields, setFields] = useState(initialFields);
+  const [mutationState, formAction] = useActionState(action, INITIAL_MUTATION_STATE);
   const draft = usePostFormDraft({ baselineTimestamp: post?.updatedAt.getTime(), draftKey, fields, initialFields, setFields });
+  const selectedCategory = categories.find((category) => category.id === fields.categoryId);
 
   return (
-    <form action={action} className="post-editor">
-      {post ? <input name="id" type="hidden" value={post.id} /> : null}
+    <form action={formAction} className="post-editor">
+      {post ? (
+        <>
+          <input name="id" type="hidden" value={post.id} />
+          <input name="expectedUpdatedAt" type="hidden" value={post.updatedAt.toISOString()} />
+        </>
+      ) : null}
       <div className="form-grid">
         <TextField label="标题" name="title" onChange={setField(setFields, "title")} required value={fields.title} />
         <TextField label="Slug" name="slug" onChange={setField(setFields, "slug")} placeholder="留空时根据标题生成拼音 slug" value={fields.slug} />
@@ -84,8 +97,26 @@ function PostEditorForm({ action, categories, draftKey, initialFields, post }: P
         </label>
         <TextField label="标签" name="tagNames" onChange={setField(setFields, "tagNames")} placeholder="Next.js, Pretext" value={fields.tagNames} />
       </div>
-      <TextField label="封面图 URL" name="coverImage" onChange={setField(setFields, "coverImage")} type="url" value={fields.coverImage} />
       <MarkdownEditor draft={draft} excerpt={fields.excerpt} setValue={setField(setFields, "content")} title={fields.title} value={fields.content} />
+      <PostCoverEditor
+        categoryName={selectedCategory?.name ?? null}
+        categorySlug={selectedCategory?.slug ?? null}
+        content={fields.content}
+        coverImage={fields.coverImage}
+        coverMode={fields.coverMode}
+        initialGlyphGeneratedAt={post?.glyphGeneratedAt?.toISOString() ?? null}
+        initialGlyphRecipe={post?.glyphRecipe ?? null}
+        initialGlyphSourceHash={post?.glyphSourceHash ?? null}
+        manualCoverHosts={manualCoverHosts}
+        expectedUpdatedAt={post?.updatedAt.toISOString()}
+        onCoverImageChange={setField(setFields, "coverImage")}
+        onCoverModeChange={(coverMode) => setFields((current) => ({ ...current, coverMode }))}
+        postId={post?.id}
+        published={post?.status === "PUBLISHED"}
+        savedCoverMode={post?.coverMode ?? "GLYPH"}
+        tagNames={fields.tagNames}
+        title={fields.title}
+      />
       <div className="form-grid">
         <TextField label="SEO 标题" name="seoTitle" onChange={setField(setFields, "seoTitle")} value={fields.seoTitle} />
         <TextField label="SEO 描述" name="seoDescription" onChange={setField(setFields, "seoDescription")} value={fields.seoDescription} />
@@ -100,6 +131,9 @@ function PostEditorForm({ action, categories, draftKey, initialFields, post }: P
       <SubmitButton className="button button--primary" pendingChildren="保存中...">
         保存
       </SubmitButton>
+      <p className="form-error" hidden={mutationState.status !== "error"} role="alert">
+        {mutationState.status === "error" ? mutationState.message : ""}
+      </p>
     </form>
   );
 }
@@ -126,6 +160,7 @@ function createInitialFields(post?: PostWithTags): PostDraftFields {
     categoryId: post?.categoryId ?? "",
     content: post?.content ?? "",
     coverImage: post?.coverImage ?? "",
+    coverMode: post?.coverMode ?? "GLYPH",
     excerpt: post?.excerpt ?? "",
     seoDescription: post?.seoDescription ?? "",
     seoTitle: post?.seoTitle ?? "",

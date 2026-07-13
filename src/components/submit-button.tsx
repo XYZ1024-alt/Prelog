@@ -3,6 +3,8 @@
 import { useFormStatus } from "react-dom";
 import type { ButtonHTMLAttributes, ReactNode } from "react";
 
+import { ButtonStateContent } from "@/components/button-state-content";
+
 type SubmitButtonProps = Omit<ButtonHTMLAttributes<HTMLButtonElement>, "type"> & {
   readonly pendingChildren?: ReactNode;
 };
@@ -18,7 +20,9 @@ export function SubmitButton({
 
   return (
     <button aria-busy={pending} disabled={isDisabled} type="submit" {...props}>
-      {pending ? pendingChildren : children}
+      <ButtonStateContent pending={pending} pendingChildren={pendingChildren}>
+        {children}
+      </ButtonStateContent>
     </button>
   );
 }

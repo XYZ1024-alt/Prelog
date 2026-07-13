@@ -1,7 +1,7 @@
 "use client";
 
 import { Check, Copy } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 type CodeBlockProps = {
   readonly code: string;
@@ -25,22 +25,41 @@ const LANGUAGE_LABELS: Record<string, string> = {
 
 export function CodeBlock({ code, language }: CodeBlockProps) {
   const [copied, setCopied] = useState(false);
+  const resetTimerRef = useRef<number | null>(null);
   const label = getLanguageLabel(language);
+  const copyLabel = copied ? "已复制代码" : "复制代码";
+
+  useEffect(() => () => {
+    if (resetTimerRef.current !== null) window.clearTimeout(resetTimerRef.current);
+  }, []);
 
   async function copyCode() {
     await navigator.clipboard.writeText(code);
+    if (resetTimerRef.current !== null) window.clearTimeout(resetTimerRef.current);
     setCopied(true);
-    window.setTimeout(() => setCopied(false), COPY_RESET_DELAY);
+    resetTimerRef.current = window.setTimeout(() => {
+      resetTimerRef.current = null;
+      setCopied(false);
+    }, COPY_RESET_DELAY);
   }
 
   return (
     <div className="code-block">
       <div className="code-block__head">
         <span>{label}</span>
-        <button aria-label="复制代码" onClick={copyCode} type="button">
-          {copied ? <Check size={14} /> : <Copy size={14} />}
-          {copied ? "已复制" : "复制"}
+        <button aria-label={copyLabel} data-copied={copied} onClick={copyCode} type="button">
+          <span aria-hidden="true" className="code-block__copy-slot code-block__copy-slot--icon">
+            <Copy className="code-block__copy-state code-block__copy-state--idle" size={14} />
+            <Check className="code-block__copy-state code-block__copy-state--success" size={14} />
+          </span>
+          <span aria-hidden="true" className="code-block__copy-slot">
+            <span className="code-block__copy-state code-block__copy-state--idle">复制</span>
+            <span className="code-block__copy-state code-block__copy-state--success">已复制</span>
+          </span>
         </button>
+        <span aria-atomic="true" aria-live="polite" className="sr-only">
+          {copied ? "代码已复制" : ""}
+        </span>
       </div>
       <pre>
         <code>{code}</code>

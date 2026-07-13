@@ -17,11 +17,30 @@ enum PostStatus {
   PUBLISHED
 }
 
+enum CoverMode {
+  GLYPH
+  MANUAL
+}
+
 enum CommentStatus {
   PENDING
   APPROVED
   HIDDEN
   SPAM
+}
+
+enum PostRevisionReason {
+  SAVE
+  PUBLISH
+  RESTORE
+}
+
+enum AnalyticsMetricType {
+  PAGE_VIEW
+  READ_DEPTH
+  SEARCH
+  SEARCH_ZERO
+  REFERRER
 }
 
 model User {
@@ -80,58 +99,97 @@ model PostTag {
 }
 
 model Post {
-  id              String        @id @default(cuid())
-  title           String
-  slug            String        @unique
-  excerpt         String
-  content         String
-  coverImage      String?
-  status          PostStatus    @default(DRAFT)
-  readingMinutes  Int           @default(1)
-  seoTitle        String?
-  seoDescription  String?
-  categoryId      String?
-  category        Category?     @relation(fields: [categoryId], references: [id], onDelete: SetNull)
-  tags            PostTag[]
-  comments        Comment[]
-  publishedAt     DateTime?
-  createdAt       DateTime      @default(now())
-  updatedAt       DateTime      @updatedAt
+  id               String             @id @default(cuid())
+  title            String
+  slug             String             @unique
+  excerpt          String
+  content          String
+  coverImage       String?
+  coverMode        CoverMode          @default(GLYPH)
+  glyphRecipe      Json?
+  glyphSourceHash  String?
+  glyphGeneratedAt DateTime?
+  status           PostStatus         @default(DRAFT)
+  readingMinutes   Int                @default(1)
+  seoTitle         String?
+  seoDescription   String?
+  categoryId       String?
+  category         Category?          @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+  tags             PostTag[]
+  comments         Comment[]
+  revisions        PostRevision[]
+  previewTokens    PostPreviewToken[]
+  publishedAt      DateTime?
+  createdAt        DateTime           @default(now())
+  updatedAt        DateTime           @updatedAt
 
   @@index([status, publishedAt])
   @@index([categoryId])
 }
 
+model PostRevision {
+  id        String             @id @default(cuid())
+  postId    String
+  post      Post               @relation(fields: [postId], references: [id], onDelete: Cascade)
+  snapshot  Json
+  reason    PostRevisionReason
+  createdAt DateTime           @default(now())
+
+  @@index([postId, createdAt])
+}
+
+model PostPreviewToken {
+  id        String   @id @default(cuid())
+  postId    String   @unique
+  post      Post     @relation(fields: [postId], references: [id], onDelete: Cascade)
+  tokenHash String   @unique
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  @@index([expiresAt])
+}
+
 model Comment {
-  id           String        @id @default(cuid())
-  postId       String
-  post         Post          @relation(fields: [postId], references: [id], onDelete: Cascade)
-  parentId     String?
-  parent       Comment?      @relation("CommentReplies", fields: [parentId], references: [id], onDelete: Cascade)
-  replies      Comment[]     @relation("CommentReplies")
-  author       String
-  email        String
-  body         String
-  status       CommentStatus @default(PENDING)
+  id             String        @id @default(cuid())
+  postId         String
+  post           Post          @relation(fields: [postId], references: [id], onDelete: Cascade)
+  parentId       String?
+  parent         Comment?      @relation("CommentReplies", fields: [parentId], references: [id], onDelete: Cascade)
+  replies        Comment[]     @relation("CommentReplies")
+  author         String
+  email          String
+  body           String
+  status         CommentStatus @default(PENDING)
   moderationNote String?
-  spamScore    Int           @default(0)
-  ipHash       String?
-  userAgent    String?
-  createdAt    DateTime      @default(now())
-  updatedAt    DateTime      @updatedAt
+  spamScore      Int           @default(0)
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
 
   @@index([postId, status, createdAt])
   @@index([parentId])
   @@index([status, createdAt])
 }
 
-model PageView {
-  id        String   @id @default(cuid())
-  path      String
-  referrer  String?
-  userAgent String?
+model RateLimitBucket {
+  key       String   @id
+  count     Int      @default(1)
+  expiresAt DateTime
   createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
-  @@index([createdAt])
-  @@index([path, createdAt])
+  @@index([expiresAt])
+}
+
+model AnalyticsDailyMetric {
+  date      DateTime
+  type      AnalyticsMetricType
+  path      String
+  dimension String              @default("")
+  count     Int                 @default(0)
+  updatedAt DateTime            @updatedAt
+
+  @@id([date, type, path, dimension])
+  @@index([date])
+  @@index([type, date])
+  @@index([path, type, date])
 }

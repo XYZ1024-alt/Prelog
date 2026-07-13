@@ -1,15 +1,21 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { MessageCircle, Timer } from "lucide-react";
+import { ArrowLeft, ArrowRight, ArrowUpRight } from "lucide-react";
 
 import { CommentsSection, type CommentNode } from "@/app/posts/[slug]/comments-section";
+import { ArticleHero } from "@/components/article-hero";
 import { ArticleToc } from "@/components/article-toc";
-import { DynamicArticleLayout } from "@/components/dynamic-article-layout";
+import { MarkdownContent } from "@/components/markdown-content";
 import { getMarkdownHeadings } from "@/lib/markdown-headings";
-import { getPublishedPostBySlug, getPublishedPostNavigation } from "@/lib/posts";
-
-export const dynamic = "force-dynamic";
+import { resolvePostCover } from "@/lib/post-cover";
+import {
+  getPublishedPostBySlug,
+  getPublishedPostNavigation,
+  getRelatedPublishedPosts,
+} from "@/lib/posts";
+import { createPageMetadataAlternates, createPostOgImageUrl, createSiteUrl } from "@/lib/site-url";
+import { createArticleDescription, stripLeadingTitleHeading } from "@/lib/text";
 
 type PageProps = {
   params: Promise<{ slug: string }>;
@@ -37,9 +43,30 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
     return {};
   }
 
+  const description = post.seoDescription ?? createArticleDescription({ excerpt: post.excerpt, title: post.title });
+  const cover = resolvePostCover(post);
+  const imageUrl = getPublicCoverImageUrl(cover, post.slug);
+
   return {
-    description: post.seoDescription ?? post.excerpt,
+    alternates: createPageMetadataAlternates(`/posts/${encodeURIComponent(post.slug)}`),
+    description,
+    openGraph: {
+      description,
+      images: [{ alt: post.title, url: imageUrl }],
+      modifiedTime: post.updatedAt.toISOString(),
+      publishedTime: post.publishedAt?.toISOString(),
+      tags: post.tags.map(({ tag }) => tag.name),
+      title: post.seoTitle ?? post.title,
+      type: "article",
+      url: createSiteUrl(`/posts/${encodeURIComponent(post.slug)}`),
+    },
     title: post.seoTitle ?? post.title,
+    twitter: {
+      card: "summary_large_image",
+      description,
+      images: [imageUrl],
+      title: post.seoTitle ?? post.title,
+    },
   };
 }
 
@@ -53,7 +80,20 @@ export default async function PostPage({ params }: PageProps) {
 
   const articleContent = stripLeadingTitleHeading(post.content, post.title);
   const articleHeadings = getMarkdownHeadings(articleContent);
-  const navigation = await getPublishedPostNavigation(post.id);
+  const articleDeck = createArticleDescription({ excerpt: post.excerpt, title: post.title });
+  const description = post.seoDescription ?? articleDeck;
+  const cover = resolvePostCover(post);
+  const imageUrl = getPublicCoverImageUrl(cover, post.slug);
+  const [navigation, relatedPosts] = await Promise.all([
+    getPublishedPostNavigation(post.id),
+    getRelatedPublishedPosts({
+      categoryId: post.categoryId,
+      postId: post.id,
+      tagIds: post.tags.map(({ tag }) => tag.id),
+    }),
+  ]);
+  const articleUrl = createSiteUrl(`/posts/${encodeURIComponent(post.slug)}`);
+  const structuredData = createStructuredData(post, description, imageUrl, articleUrl);
   const commentTree = buildCommentTree(
     post.comments.map((comment) => ({
       author: comment.author,
@@ -66,24 +106,24 @@ export default async function PostPage({ params }: PageProps) {
 
   return (
     <main className="article-shell">
-      <header className="article-hero">
-        <span className="eyebrow">{post.category?.name ?? "未分类"}</span>
-        <h1>{post.title}</h1>
-        <p>{post.excerpt}</p>
-        <div className="article-meta">
-          <span>
-            <Timer size={15} />
-            {post.readingMinutes} 分钟阅读
-          </span>
-          <span>
-            <MessageCircle size={15} />
-            {post.comments.length} 条评论
-          </span>
-        </div>
-      </header>
+      <script
+        dangerouslySetInnerHTML={{ __html: serializeStructuredData(structuredData) }}
+        type="application/ld+json"
+      />
+      <ArticleHero
+        category={post.category}
+        commentCount={post.comments.length}
+        cover={cover}
+        excerpt={articleDeck}
+        publishedAt={post.publishedAt}
+        readingMinutes={post.readingMinutes}
+        tags={post.tags.map(({ tag }) => tag)}
+        title={post.title}
+      />
       <div className="article-layout">
         <div className="article-main">
-          <DynamicArticleLayout content={articleContent} />
+          <MarkdownContent content={articleContent} />
+          <RelatedReading items={relatedPosts} />
           <ArticleNavigation navigation={navigation} />
           <CommentsSection comments={commentTree} postId={post.id} slug={post.slug} />
         </div>
@@ -93,6 +133,45 @@ export default async function PostPage({ params }: PageProps) {
   );
 }
 
+type RelatedPostItem = Awaited<ReturnType<typeof getRelatedPublishedPosts>>[number];
+
+function RelatedReading({ items }: { readonly items: readonly RelatedPostItem[] }) {
+  if (items.length === 0) {
+    return null;
+  }
+
+  return (
+    <section aria-labelledby="related-reading-title" className="related-reading">
+      <header>
+        <span>Related / {String(items.length).padStart(2, "0")}</span>
+        <h2 id="related-reading-title">继续阅读</h2>
+      </header>
+      <ol>
+        {items.map(({ post, relevance }) => (
+          <li key={post.id}>
+            <div>
+              <span>{createRelationLabel(post, relevance)}</span>
+              <h3><Link href={`/posts/${post.slug}`}>{post.title}</Link></h3>
+              <p>{post.excerpt}</p>
+            </div>
+            <Link aria-label={`阅读 ${post.title}`} href={`/posts/${post.slug}`}>
+              <ArrowUpRight size={19} />
+            </Link>
+          </li>
+        ))}
+      </ol>
+    </section>
+  );
+}
+
+function createRelationLabel(post: RelatedPostItem["post"], relevance: RelatedPostItem["relevance"]) {
+  const signals = [
+    relevance.sharedCategory && post.category ? post.category.name : null,
+    ...relevance.sharedTags.map((tag) => `#${tag.name}`),
+  ].filter((signal): signal is string => Boolean(signal));
+  return signals.join(" · ");
+}
+
 function ArticleNavigation({ navigation }: { readonly navigation: { readonly next: NavigationPost | null; readonly previous: NavigationPost | null } }) {
   if (!navigation.previous && !navigation.next) {
     return null;
@@ -100,22 +179,36 @@ function ArticleNavigation({ navigation }: { readonly navigation: { readonly nex
 
   return (
     <nav aria-label="继续阅读" className="article-navigation">
-      <ArticleNavigationLink label="上一篇" post={navigation.previous} />
-      <ArticleNavigationLink label="下一篇" post={navigation.next} />
+      <ArticleNavigationLink direction="previous" label="上一篇" post={navigation.previous} />
+      <ArticleNavigationLink direction="next" label="下一篇" post={navigation.next} />
     </nav>
   );
 }
 
-function ArticleNavigationLink({ label, post }: { readonly label: string; readonly post: NavigationPost | null }) {
+function ArticleNavigationLink({
+  direction,
+  label,
+  post,
+}: {
+  readonly direction: "next" | "previous";
+  readonly label: string;
+  readonly post: NavigationPost | null;
+}) {
   if (!post) {
     return <span className="article-navigation__empty">{label}</span>;
   }
 
   return (
     <Link className="article-navigation__item" href={`/posts/${post.slug}`}>
-      <span>{label}</span>
-      <strong>{post.title}</strong>
-      <p>{post.excerpt}</p>
+      <span className="article-navigation__direction">
+        {direction === "previous" ? <ArrowLeft size={18} /> : null}
+        {label}
+        {direction === "next" ? <ArrowRight size={18} /> : null}
+      </span>
+      <span className="article-navigation__copy">
+        <strong>{post.title}</strong>
+        <span>{post.excerpt}</span>
+      </span>
     </Link>
   );
 }
@@ -145,34 +238,33 @@ function placeCommentNode(node: CommentNode, nodes: ReadonlyMap<string, CommentN
   parent.replies.push(node);
 }
 
-function stripLeadingTitleHeading(content: string, title: string) {
-  const normalizedTitle = normalizeHeadingText(title);
-  const lines = content.split(/\r?\n/);
-  const firstContentLineIndex = lines.findIndex((line) => line.trim().length > 0);
-
-  if (firstContentLineIndex === -1) {
-    return content;
-  }
-
-  return removeMatchingFirstHeading({ firstContentLineIndex, lines, normalizedTitle });
+function createStructuredData(
+  post: NonNullable<Awaited<ReturnType<typeof getPublishedPostBySlug>>>,
+  description: string,
+  imageUrl: URL,
+  articleUrl: URL,
+) {
+  return {
+    "@context": "https://schema.org",
+    "@type": "BlogPosting",
+    articleSection: post.category?.name,
+    dateModified: post.updatedAt.toISOString(),
+    datePublished: post.publishedAt?.toISOString(),
+    description,
+    headline: post.seoTitle ?? post.title,
+    image: imageUrl.toString(),
+    keywords: post.tags.map(({ tag }) => tag.name),
+    mainEntityOfPage: articleUrl.toString(),
+    url: articleUrl.toString(),
+  };
 }
 
-function removeMatchingFirstHeading(options: { readonly firstContentLineIndex: number; readonly lines: readonly string[]; readonly normalizedTitle: string }) {
-  const { firstContentLineIndex, lines, normalizedTitle } = options;
-  const firstLine = lines[firstContentLineIndex].trim();
-  const match = /^#\s+(.+)$/.exec(firstLine);
-
-  if (!match || normalizeHeadingText(match[1]) !== normalizedTitle) {
-    return lines.join("\n");
-  }
-
-  return lines
-    .slice(0, firstContentLineIndex)
-    .concat(lines.slice(firstContentLineIndex + 1))
-    .join("\n")
-    .trimStart();
+function serializeStructuredData(value: ReturnType<typeof createStructuredData>) {
+  return JSON.stringify(value).replaceAll("<", "\\u003c");
 }
 
-function normalizeHeadingText(value: string) {
-  return value.trim().replace(/\s+/g, " ").toLowerCase();
+function getPublicCoverImageUrl(cover: ReturnType<typeof resolvePostCover>, slug: string) {
+  return cover.mode === "MANUAL"
+    ? new URL(cover.imageUrl)
+    : createPostOgImageUrl({ slug, sourceHash: cover.sourceHash });
 }

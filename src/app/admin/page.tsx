@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { BarChart3, FileText, MessageSquare, MousePointerClick } from "lucide-react";
+import { BarChart3, FileText, MessageSquare, MousePointerClick, SearchX } from "lucide-react";
 
 import { AdminNav } from "@/app/admin/admin-nav";
 import { toAdminPath } from "@/lib/admin-path";
@@ -41,6 +41,7 @@ export default async function AdminIndexPage() {
           <RecentActivities activities={data.recentActivities} />
           <VisitPanel dailyVisits={data.dailyVisits} maxDailyVisits={maxDailyVisits} topPaths={data.topPaths} />
         </section>
+        <ZeroResultQueries queries={data.zeroResultQueries} />
         <section className="admin-card">
           <div className="admin-card__head">
             <h2>管理员资料</h2>
@@ -54,6 +55,40 @@ export default async function AdminIndexPage() {
         </section>
       </section>
     </main>
+  );
+}
+
+function ZeroResultQueries({
+  queries,
+}: {
+  readonly queries: readonly { readonly count: number; readonly query: string }[];
+}) {
+  return (
+    <section className="admin-card admin-search-gaps" aria-labelledby="search-gaps-title">
+      <div className="admin-card__head">
+        <div>
+          <h2 id="search-gaps-title">搜索内容缺口</h2>
+          <span>没有返回结果的高频关键词 · Top 5</span>
+        </div>
+        <SearchX aria-hidden="true" size={18} />
+      </div>
+      {queries.length > 0 ? (
+        <ol className="search-gap-list">
+          {queries.map((item, index) => (
+            <li key={item.query}>
+              <span>{String(index + 1).padStart(2, "0")}</span>
+              <strong>{item.query}</strong>
+              <span>{item.count} 次</span>
+            </li>
+          ))}
+        </ol>
+      ) : (
+        <div className="admin-empty-state">
+          <SearchX aria-hidden="true" size={20} />
+          <p>暂无零结果搜索记录。读者搜索但没有命中的关键词会显示在这里。</p>
+        </div>
+      )}
+    </section>
   );
 }
 

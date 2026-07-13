@@ -1,9 +1,10 @@
 "use server";
 
-import { revalidatePath } from "next/cache";
+import { revalidatePath, updateTag } from "next/cache";
 import { redirect } from "next/navigation";
 
 import { toAdminPath } from "@/lib/admin-path";
+import { createCategoryMutationCacheTags } from "@/lib/cache-tags";
 import { prisma } from "@/lib/prisma";
 import { requireAdmin } from "@/lib/session";
 import { toSlug } from "@/lib/text";
@@ -13,8 +14,8 @@ export async function createCategory(formData: FormData) {
   await requireAdmin();
   const parsed = parseCategoryForm(formData);
 
-  await prisma.category.create({ data: categoryData(parsed) });
-  revalidateCategories();
+  const category = await prisma.category.create({ data: categoryData(parsed) });
+  revalidateCategories([category.slug]);
   redirect(toAdminPath("/categories"));
 }
 
@@ -23,11 +24,12 @@ export async function updateCategory(formData: FormData) {
   const id = idSchema.parse({ id: formData.get("id") }).id;
   const parsed = parseCategoryForm(formData);
 
-  await prisma.category.update({
+  const previous = await prisma.category.findUniqueOrThrow({ where: { id }, select: { slug: true } });
+  const category = await prisma.category.update({
     data: categoryData(parsed),
     where: { id },
   });
-  revalidateCategories();
+  revalidateCategories([previous.slug, category.slug]);
   redirect(toAdminPath("/categories"));
 }
 
@@ -35,8 +37,8 @@ export async function deleteCategory(formData: FormData) {
   await requireAdmin();
   const id = idSchema.parse({ id: formData.get("id") }).id;
 
-  await prisma.category.delete({ where: { id } });
-  revalidateCategories();
+  const category = await prisma.category.delete({ where: { id } });
+  revalidateCategories([category.slug]);
 }
 
 function parseCategoryForm(formData: FormData) {
@@ -58,9 +60,8 @@ function categoryData(parsed: ReturnType<typeof parseCategoryForm>) {
   };
 }
 
-function revalidateCategories() {
-  revalidatePath("/");
+function revalidateCategories(slugs: readonly string[]) {
+  createCategoryMutationCacheTags(slugs).forEach((tag) => updateTag(tag));
   revalidatePath("/admin/categories");
   revalidatePath("/admin/posts");
-  revalidatePath("/search");
 }

@@ -7,7 +7,7 @@ import { ADMIN_USER_ID } from "@/lib/constants";
 import { prisma } from "@/lib/prisma";
 
 export async function requireAdmin() {
-  const session = await getSafeServerSession();
+  const session = await getServerSession(authOptions);
 
   if (!session?.user?.id || session.user.id !== ADMIN_USER_ID) {
     redirect(toAdminPath("/login"));
@@ -23,12 +23,4 @@ export async function requireAdmin() {
   }
 
   return { session, user };
-}
-
-export async function getSafeServerSession() {
-  try {
-    return await getServerSession(authOptions);
-  } catch {
-    return null;
-  }
 }

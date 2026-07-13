@@ -6,6 +6,7 @@ export const MIN_READING_MINUTES = 1;
 export const MAX_EXCERPT_LENGTH = 180;
 export const POST_PAGE_SIZE = 12;
 export const PUBLIC_POST_SELECT_LIMIT = 24;
+export const PUBLIC_SEARCH_QUERY_MAX = 80;
 export const SITE_SETTINGS_ID = "default";
 export const ADMIN_USER_ID = "admin";
 export const DEFAULT_SITE_SETTINGS = {

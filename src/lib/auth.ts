@@ -5,7 +5,14 @@ import CredentialsProvider from "next-auth/providers/credentials";
 import { toAdminPath } from "@/lib/admin-path";
 import { ADMIN_USER_ID } from "@/lib/constants";
 import { prisma } from "@/lib/prisma";
+import { consumeRateLimit, type RateLimitPolicy, type RateLimitResult } from "@/lib/rate-limit";
+import { getRequestIdentity, hashSensitiveValue, type RequestHeaders } from "@/lib/request-identity";
 import { loginSchema } from "@/lib/validation";
+
+export const LOGIN_RATE_LIMIT_POLICIES = {
+  account: { limit: 20, windowMs: 15 * 60 * 1000 },
+  address: { limit: 8, windowMs: 15 * 60 * 1000 },
+} as const satisfies Record<string, RateLimitPolicy>;
 
 export const authOptions: NextAuthOptions = {
   secret: process.env.AUTH_SECRET ?? process.env.NEXTAUTH_SECRET,
@@ -67,3 +74,30 @@ export const authOptions: NextAuthOptions = {
     },
   },
 };
+
+export async function enforceLoginRateLimit(
+  credentials: Record<string, unknown> | undefined,
+  requestHeaders: RequestHeaders,
+): Promise<RateLimitResult> {
+  const identity = getRequestIdentity(requestHeaders, "login");
+  const addressResult = await consumeRateLimit({
+    ...LOGIN_RATE_LIMIT_POLICIES.address,
+    key: `login:address:${identity.hash}`,
+  });
+
+  if (!addressResult.allowed) {
+    return addressResult;
+  }
+
+  const parsed = loginSchema.safeParse(credentials);
+
+  if (!parsed.success) {
+    return addressResult;
+  }
+
+  const accountHash = hashSensitiveValue(`login-account:${parsed.data.email.toLowerCase()}`);
+  return consumeRateLimit({
+    ...LOGIN_RATE_LIMIT_POLICIES.account,
+    key: `login:account:${accountHash}`,
+  });
+}

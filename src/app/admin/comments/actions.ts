@@ -1,8 +1,9 @@
 "use server";
 
-import { revalidatePath } from "next/cache";
+import { revalidatePath, updateTag } from "next/cache";
 
 import type { CommentStatus } from "@/generated/prisma/client";
+import { createCommentMutationCacheTags } from "@/lib/cache-tags";
 import { prisma } from "@/lib/prisma";
 import { requireAdmin } from "@/lib/session";
 import { idSchema } from "@/lib/validation";
@@ -43,6 +44,6 @@ async function updateCommentStatus(formData: FormData, status: CommentStatus) {
 }
 
 function revalidateCommentPaths(slug: string) {
-  revalidatePath(`/posts/${slug}`);
+  createCommentMutationCacheTags(slug).forEach((tag) => updateTag(tag));
   revalidatePath("/admin/comments");
 }

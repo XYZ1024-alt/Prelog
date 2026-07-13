@@ -1,13 +1,13 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 
-import { AnimatedPage } from "@/components/animated-page";
+import { PageShell } from "@/components/page-shell";
 import { TypographicAscii } from "@/components/typographic-ascii";
 import { getCategoriesWithCounts } from "@/lib/posts";
-
-export const dynamic = "force-dynamic";
+import { createPageMetadataAlternates } from "@/lib/site-url";
 
 export const metadata: Metadata = {
+  alternates: createPageMetadataAlternates("/categories"),
   title: "分类",
   description: "按分类浏览 Prelog 的文章。",
 };
@@ -17,7 +17,7 @@ export default async function CategoriesPage() {
   const visibleCategories = categories.filter((category) => category._count.posts > 0);
 
   return (
-    <AnimatedPage>
+    <PageShell>
       <section className="page-heading">
         <TypographicAscii text="Categories" tone="compact" />
         <span className="eyebrow">Categories</span>
@@ -34,6 +34,6 @@ export default async function CategoriesPage() {
         ))}
       </div>
       {visibleCategories.length === 0 ? <p className="empty-state">暂无分类。</p> : null}
-    </AnimatedPage>
+    </PageShell>
   );
 }

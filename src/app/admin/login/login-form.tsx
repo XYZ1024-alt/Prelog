@@ -4,7 +4,10 @@ import { useState } from "react";
 import { signIn } from "next-auth/react";
 import { useRouter, useSearchParams } from "next/navigation";
 
+import { ButtonStateContent } from "@/components/button-state-content";
 import { toAdminPath } from "@/lib/admin-path";
+
+const RATE_LIMIT_ERROR = "RATE_LIMITED";
 
 export function LoginForm() {
   const router = useRouter();
@@ -24,7 +27,9 @@ export function LoginForm() {
     });
 
     if (result?.error) {
-      setError("邮箱或密码不正确。");
+      setError(result.error === RATE_LIMIT_ERROR
+        ? "登录尝试过于频繁，请稍后再试。"
+        : "邮箱或密码不正确。");
       setIsSubmitting(false);
       return;
     }
@@ -43,9 +48,11 @@ export function LoginForm() {
         密码
         <input autoComplete="current-password" disabled={isSubmitting} name="password" required type="password" />
       </label>
-      {error ? <p className="form-error">{error}</p> : null}
+      {error ? <p className="form-error" role="alert">{error}</p> : null}
       <button aria-busy={isSubmitting} className="button button--primary" disabled={isSubmitting} type="submit">
-        {isSubmitting ? "登录中..." : "登录"}
+        <ButtonStateContent pending={isSubmitting} pendingChildren="登录中...">
+          登录
+        </ButtonStateContent>
       </button>
     </form>
   );

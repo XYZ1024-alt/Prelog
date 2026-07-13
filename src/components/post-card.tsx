@@ -1,53 +1,58 @@
+import type { Prisma } from "@/generated/prisma/client";
+import Image from "next/image";
 import Link from "next/link";
 import { CalendarDays, MessageCircle, Timer } from "lucide-react";
 
+import { ArticleGlyph } from "@/components/article-glyph";
 import { PretextFitTitle } from "@/components/pretext-fit-title";
-import type { postInclude } from "@/lib/posts";
+import { getGlyphRecipeInitial } from "@/lib/glyph-recipe";
+import { resolvePostCover } from "@/lib/post-cover";
 
 type PostWithMeta = {
-  id: string;
-  title: string;
-  slug: string;
-  excerpt: string;
-  coverImage: string | null;
-  readingMinutes: number;
-  publishedAt: Date | null;
-  category: { name: string; slug: string } | null;
-  tags: { tag: { name: string; slug: string } }[];
-  _count: { comments: number };
+  readonly _count: { readonly comments: number };
+  readonly category: { readonly name: string; readonly slug: string } | null;
+  readonly coverImage: string | null;
+  readonly coverMode: "GLYPH" | "MANUAL";
+  readonly excerpt: string;
+  readonly glyphRecipe: Prisma.JsonValue | null;
+  readonly glyphSourceHash: string | null;
+  readonly id: string;
+  readonly publishedAt: Date | null;
+  readonly readingMinutes: number;
+  readonly slug: string;
+  readonly tags: readonly { readonly tag: { readonly name: string; readonly slug: string } }[];
+  readonly title: string;
 };
 
-type CoverMeta = {
-  readonly category: string;
-  readonly keywords: readonly string[];
-  readonly signal: string;
-};
-
-const DEFAULT_CATEGORY = "Notes";
-const DEFAULT_SIGNAL = "LOG";
-const MAX_KEYWORDS = 3;
-const TITLE_TOKEN_PATTERN = /[A-Za-z0-9.+#-]+|[\u4e00-\u9fa5]{2,4}/g;
-
-const SIGNAL_RULES = [
-  { signal: "NEXT", terms: ["next", "react", "路由", "渲染", "部署"] },
-  { signal: "TYPE", terms: ["pretext", "typography", "排版", "文字", "阅读"] },
-  { signal: "UI", terms: ["ui", "design", "设计", "界面", "主题", "黑白", "留白", "网格"] },
-  { signal: "AI", terms: ["ai", "agent", "模型", "提示词"] },
-  { signal: "TOOL", terms: ["tool", "工具", "效率", "工作流"] },
-  { signal: "LAB", terms: ["项目", "实践", "搭建", "工程"] },
-] as const;
-
-export function PostCard({ post }: { post: PostWithMeta }) {
+export function PostCard({ post }: { readonly post: PostWithMeta }) {
   const date = post.publishedAt?.toLocaleDateString("zh-CN") ?? "未发布";
-  const cover = createCoverMeta(post);
+  const cover = resolvePostCover(post);
 
   return (
     <article className="post-card">
-      <Link className="post-card__media" href={`/posts/${post.slug}`} aria-label={`阅读 ${post.title}`}>
-        {post.coverImage ? (
-          <span className="post-card__image" style={{ backgroundImage: `url(${post.coverImage})` }} />
+      <Link aria-label={`阅读 ${post.title}`} className="post-card__media" href={`/posts/${post.slug}`}>
+        {cover.mode === "MANUAL" ? (
+          <Image
+            alt=""
+            className="post-card__image"
+            fill
+            referrerPolicy="no-referrer"
+            sizes="(max-width: 760px) 100vw, (max-width: 1050px) 50vw, 33vw"
+            src={cover.imageUrl}
+            unoptimized
+          />
         ) : (
-          <DefaultPostCover cover={cover} />
+          <span className="post-card-cover">
+            <span className="post-card-cover__grid" />
+            <span className="post-card-cover__topline">
+              <span>{post.category?.name ?? "未分类"}</span>
+              <span>Initial / {getGlyphRecipeInitial(cover.recipe) ?? "Legacy"}</span>
+            </span>
+            <ArticleGlyph className="post-card-cover__glyph" preset="thumbnail" recipe={cover.recipe} />
+            <span className="post-card-cover__keywords">
+              Sections {padCount(cover.recipe.legend.sections)} / Code {padCount(cover.recipe.legend.codeBlocks)}
+            </span>
+          </span>
         )}
       </Link>
       <div className="post-card__body">
@@ -82,58 +87,6 @@ export function PostCard({ post }: { post: PostWithMeta }) {
   );
 }
 
-function DefaultPostCover({ cover }: { readonly cover: CoverMeta }) {
-  return (
-    <span className="post-card-cover">
-      <span className="post-card-cover__grid" />
-      <span className="post-card-cover__topline">
-        <span>{cover.category}</span>
-        <span>Article</span>
-      </span>
-      <strong>{cover.signal}</strong>
-      <span className="post-card-cover__keywords">{cover.keywords.join(" / ")}</span>
-      <span className="post-card-cover__marks" aria-hidden="true">
-        <span />
-        <span />
-        <span />
-      </span>
-    </span>
-  );
+function padCount(value: number) {
+  return String(value).padStart(2, "0");
 }
-
-function createCoverMeta(post: PostWithMeta): CoverMeta {
-  const category = post.category?.name ?? DEFAULT_CATEGORY;
-  const sources = [post.title, category, ...post.tags.map(({ tag }) => tag.name)];
-  const keywords = getKeywords(post, category);
-
-  return {
-    category,
-    keywords,
-    signal: getSignal(sources),
-  };
-}
-
-function getSignal(sources: readonly string[]) {
-  const source = sources.join(" ").toLowerCase();
-  const matched = SIGNAL_RULES.find((rule) => rule.terms.some((term) => source.includes(term.toLowerCase())));
-
-  if (matched) {
-    return matched.signal;
-  }
-
-  return DEFAULT_SIGNAL;
-}
-
-function getKeywords(post: PostWithMeta, category: string) {
-  const tagNames = post.tags.map(({ tag }) => tag.name);
-  const titleTokens = post.title.match(TITLE_TOKEN_PATTERN) ?? [];
-  const keywords = uniqueNonEmpty([...tagNames, category, ...titleTokens]);
-
-  return keywords.slice(0, MAX_KEYWORDS);
-}
-
-function uniqueNonEmpty(values: readonly string[]) {
-  return Array.from(new Set(values.map((value) => value.trim()).filter(Boolean)));
-}
-
-export type PostIncludeShape = typeof postInclude;

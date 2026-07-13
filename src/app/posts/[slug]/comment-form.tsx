@@ -3,6 +3,7 @@
 import { useActionState, useEffect, useRef } from "react";
 
 import { addComment, type CommentFormState } from "@/app/posts/[slug]/actions";
+import { ButtonStateContent } from "@/components/button-state-content";
 
 type CommentFormProps = {
   readonly onClearReply?: () => void;
@@ -56,9 +57,16 @@ export function CommentForm(props: CommentFormProps) {
         评论
         <textarea name="body" required rows={5} />
       </label>
-      {state.message ? <p className={state.ok ? "form-success" : "form-error"}>{state.message}</p> : null}
+      <p aria-live="polite" className="form-success" hidden={!state.ok || !state.message}>
+        {state.ok ? state.message : ""}
+      </p>
+      <p className="form-error" hidden={state.ok || !state.message} role="alert">
+        {!state.ok ? state.message : ""}
+      </p>
       <button aria-busy={pending} className="button button--primary" disabled={pending} type="submit">
-        {pending ? "提交中" : "提交审核"}
+        <ButtonStateContent pending={pending} pendingChildren="提交中">
+          提交审核
+        </ButtonStateContent>
       </button>
     </form>
   );

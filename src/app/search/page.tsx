@@ -1,31 +1,54 @@
+import type { Metadata } from "next";
+import Image from "next/image";
 import Link from "next/link";
-import { Hash, Search, Shapes, Sparkles } from "lucide-react";
+import { notFound } from "next/navigation";
+import { ArrowLeft, ArrowRight, Hash, Search, Shapes, Sparkles } from "lucide-react";
 
-import { AnimatedPage } from "@/components/animated-page";
+import { ArticleGlyph } from "@/components/article-glyph";
+import { PageShell } from "@/components/page-shell";
 import { SubmitButton } from "@/components/submit-button";
-import { getCategoriesWithCounts, getTagsWithCounts, searchPublishedPosts } from "@/lib/posts";
+import { PUBLIC_SEARCH_QUERY_MAX } from "@/lib/constants";
+import { resolvePostCover } from "@/lib/post-cover";
+import { getCategoriesWithCounts, getTagsWithCounts, searchPublishedPostsPage } from "@/lib/posts";
+import { createPageMetadataAlternates } from "@/lib/site-url";
+import { publicSearchQuerySchema } from "@/lib/validation";
 
 export const dynamic = "force-dynamic";
+
+export const metadata: Metadata = {
+  alternates: createPageMetadataAlternates("/search"),
+  description: "搜索 Prelog 已发布的文章、分类与标签。",
+  robots: { follow: true, index: false },
+  title: "搜索",
+};
 
 const SUGGESTED_QUERIES = ["Pretext", "Next.js", "主题", "设计", "Prisma", "AI"];
 const TAG_SUGGESTION_LIMIT = 8;
 const CATEGORY_SUGGESTION_LIMIT = 6;
 
 type SearchPageProps = {
-  searchParams: Promise<{ q?: string }>;
+  searchParams: Promise<{ page?: string; q?: string }>;
 };
 
 export default async function SearchPage({ searchParams }: SearchPageProps) {
   const params = await searchParams;
-  const query = params.q?.trim() ?? "";
-  const [posts, categories, tags] = await Promise.all([
-    searchPublishedPosts(query),
+  const formQuery = params.q?.trim() ?? "";
+  const parsedQuery = publicSearchQuerySchema.safeParse(formQuery);
+  const query = parsedQuery.success ? parsedQuery.data : "";
+  const queryError = parsedQuery.success ? null : `搜索词最多 ${PUBLIC_SEARCH_QUERY_MAX} 个字符。`;
+  const requestedPage = parsePageNumber(params.page);
+  const [result, categories, tags] = await Promise.all([
+    searchPublishedPostsPage(query, { page: requestedPage }),
     getCategoriesWithCounts(),
     getTagsWithCounts(),
   ]);
 
+  if (result.total > 0 && requestedPage > result.pageCount) {
+    notFound();
+  }
+
   return (
-    <AnimatedPage>
+    <PageShell>
       <section className="page-heading">
         <span className="eyebrow">
           <Search size={16} />
@@ -34,11 +57,18 @@ export default async function SearchPage({ searchParams }: SearchPageProps) {
         <h1>搜索文章</h1>
         <p className="page-heading__intro">支持标题、摘要、正文、分类、标签与 slug 匹配，结果会按相关性重新排序。</p>
       </section>
-      <SearchForm query={query} />
+      <SearchForm error={queryError} query={formQuery} />
       <section className="search-shell">
         <div className="search-main">
-          {query ? <SearchSummary count={posts.length} query={query} /> : <SearchPrompt />}
-          {query ? <SearchResults posts={posts} query={query} /> : null}
+          {query ? (
+            <SearchSummary
+              isCandidateLimitReached={result.isCandidateLimitReached}
+              query={query}
+              total={result.total}
+            />
+          ) : <SearchPrompt />}
+          {query ? <SearchResults posts={result.posts} query={query} /> : null}
+          {query ? <SearchPagination page={result.page} pageCount={result.pageCount} query={query} /> : null}
         </div>
         <aside className="search-sidebar">
           <SuggestionGroup icon={Sparkles} items={SUGGESTED_QUERIES.map((item) => ({ href: `/search?q=${encodeURIComponent(item)}`, label: item }))} title="推荐搜索" />
@@ -60,18 +90,29 @@ export default async function SearchPage({ searchParams }: SearchPageProps) {
           />
         </aside>
       </section>
-    </AnimatedPage>
+    </PageShell>
   );
 }
 
-function SearchForm({ query }: { readonly query: string }) {
+function SearchForm({ error, query }: { readonly error: string | null; readonly query: string }) {
   return (
-    <form className="search-form search-form--wide">
-      <input autoComplete="off" defaultValue={query} name="q" placeholder="输入标题、标签、分类或正文关键词" type="search" />
-      <SubmitButton className="button button--primary" pendingChildren="搜索中...">
-        搜索
-      </SubmitButton>
-    </form>
+    <div>
+      <form className="search-form search-form--wide">
+        <input
+          aria-label="搜索文章"
+          autoComplete="off"
+          defaultValue={query}
+          maxLength={PUBLIC_SEARCH_QUERY_MAX}
+          name="q"
+          placeholder="输入标题、标签、分类或正文关键词"
+          type="search"
+        />
+        <SubmitButton className="button button--primary" pendingChildren="搜索中...">
+          搜索
+        </SubmitButton>
+      </form>
+      {error ? <p className="form-error" role="alert">{error}</p> : null}
+    </div>
   );
 }
 
@@ -84,7 +125,15 @@ function SearchPrompt() {
   );
 }
 
-function SearchSummary({ count, query }: { readonly count: number; readonly query: string }) {
+function SearchSummary({
+  isCandidateLimitReached,
+  query,
+  total,
+}: {
+  readonly isCandidateLimitReached: boolean;
+  readonly query: string;
+  readonly total: number;
+}) {
   return (
     <section className="search-summary">
       <div>
@@ -93,13 +142,13 @@ function SearchSummary({ count, query }: { readonly count: number; readonly quer
       </div>
       <div>
         <span>结果</span>
-        <strong>{count} 篇</strong>
+        <strong>{isCandidateLimitReached ? `至少 ${total}` : total} 篇</strong>
       </div>
     </section>
   );
 }
 
-type SearchResultPost = Awaited<ReturnType<typeof searchPublishedPosts>>[number];
+type SearchResultPost = Awaited<ReturnType<typeof searchPublishedPostsPage>>["posts"][number];
 
 function SearchResults({ posts, query }: { readonly posts: readonly SearchResultPost[]; readonly query: string }) {
   if (posts.length === 0) {
@@ -123,32 +172,50 @@ function SearchResults({ posts, query }: { readonly posts: readonly SearchResult
 function SearchResultCard({ post, query }: { readonly post: SearchResultPost; readonly query: string }) {
   const publishedAt = post.publishedAt?.toLocaleDateString("zh-CN") ?? "未发布";
   const tokens = query.split(/\s+/).filter(Boolean);
+  const cover = resolvePostCover(post);
 
   return (
     <article className="search-result-card">
-      <div className="search-result-card__meta">
-        {post.category ? <Link href={`/categories/${post.category.slug}`}>{post.category.name}</Link> : <span>未分类</span>}
-        <span>{publishedAt}</span>
-        <span>{post.readingMinutes} 分钟</span>
-        <span>{post._count.comments} 评论</span>
-      </div>
-      <h2>
-        <Link href={`/posts/${post.slug}`}>{post.title}</Link>
-      </h2>
-      <p>{highlightText(post.search.snippet, tokens)}</p>
-      <div className="search-result-card__signals">
-        {post.search.titleExact ? <span>标题命中</span> : null}
-        {post.search.matchedCategory && post.category ? <span>分类: {post.category.name}</span> : null}
-        {post.search.matchedTags.map((tag) => (
-          <span key={tag}>标签: {tag}</span>
-        ))}
-      </div>
-      <div className="tag-row">
-        {post.tags.map(({ tag }) => (
-          <Link className="tag" href={`/tags/${tag.slug}`} key={tag.slug}>
-            #{tag.name}
-          </Link>
-        ))}
+      <Link aria-label={`阅读 ${post.title}`} className="search-result-card__cover" href={`/posts/${post.slug}`}>
+        {cover.mode === "MANUAL" ? (
+          <Image
+            alt=""
+            className="search-result-card__image"
+            fill
+            referrerPolicy="no-referrer"
+            sizes="(max-width: 760px) 100vw, 150px"
+            src={cover.imageUrl}
+            unoptimized
+          />
+        ) : (
+          <ArticleGlyph preset="thumbnail" recipe={cover.recipe} />
+        )}
+      </Link>
+      <div className="search-result-card__copy">
+        <div className="search-result-card__meta">
+          {post.category ? <Link href={`/categories/${post.category.slug}`}>{post.category.name}</Link> : <span>未分类</span>}
+          <span>{publishedAt}</span>
+          <span>{post.readingMinutes} 分钟</span>
+          <span>{post._count.comments} 评论</span>
+        </div>
+        <h2>
+          <Link href={`/posts/${post.slug}`}>{post.title}</Link>
+        </h2>
+        <p>{highlightText(post.search.snippet, tokens)}</p>
+        <div className="search-result-card__signals">
+          {post.search.titleExact ? <span>标题命中</span> : null}
+          {post.search.matchedCategory && post.category ? <span>分类: {post.category.name}</span> : null}
+          {post.search.matchedTags.map((tag) => (
+            <span key={tag}>标签: {tag}</span>
+          ))}
+        </div>
+        <div className="tag-row">
+          {post.tags.map(({ tag }) => (
+            <Link className="tag" href={`/tags/${tag.slug}`} key={tag.slug}>
+              #{tag.name}
+            </Link>
+          ))}
+        </div>
       </div>
     </article>
   );
@@ -178,6 +245,51 @@ function SuggestionGroup({
       </div>
     </section>
   );
+}
+
+function SearchPagination({ page, pageCount, query }: {
+  readonly page: number;
+  readonly pageCount: number;
+  readonly query: string;
+}) {
+  if (pageCount <= 1) {
+    return null;
+  }
+
+  return (
+    <nav aria-label="搜索结果分页" className="content-pagination">
+      {page > 1 ? (
+        <Link href={createSearchPageHref(query, page - 1)}>
+          <ArrowLeft size={16} />
+          上一页
+        </Link>
+      ) : <span />}
+      <span>{page} / {pageCount}</span>
+      {page < pageCount ? (
+        <Link href={createSearchPageHref(query, page + 1)}>
+          下一页
+          <ArrowRight size={16} />
+        </Link>
+      ) : <span />}
+    </nav>
+  );
+}
+
+function createSearchPageHref(query: string, page: number) {
+  const params = new URLSearchParams({ q: query });
+  if (page > 1) {
+    params.set("page", String(page));
+  }
+  return `/search?${params.toString()}`;
+}
+
+function parsePageNumber(value: string | undefined) {
+  if (!value) {
+    return 1;
+  }
+
+  const page = Number(value);
+  return Number.isSafeInteger(page) && page > 0 ? page : 1;
 }
 
 function highlightText(text: string, tokens: readonly string[]) {

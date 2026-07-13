@@ -1,13 +1,13 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 
-import { AnimatedPage } from "@/components/animated-page";
+import { PageShell } from "@/components/page-shell";
 import { TypographicAscii } from "@/components/typographic-ascii";
 import { getTagsWithCounts } from "@/lib/posts";
-
-export const dynamic = "force-dynamic";
+import { createPageMetadataAlternates } from "@/lib/site-url";
 
 export const metadata: Metadata = {
+  alternates: createPageMetadataAlternates("/tags"),
   title: "标签",
   description: "按标签浏览 Prelog 的文章。",
 };
@@ -16,7 +16,7 @@ export default async function TagsPage() {
   const tags = await getTagsWithCounts();
 
   return (
-    <AnimatedPage>
+    <PageShell>
       <section className="page-heading">
         <TypographicAscii text="Tags" tone="compact" />
         <span className="eyebrow">Tags</span>
@@ -31,6 +31,6 @@ export default async function TagsPage() {
         ))}
       </div>
       {tags.length === 0 ? <p className="empty-state">暂无标签。</p> : null}
-    </AnimatedPage>
+    </PageShell>
   );
 }

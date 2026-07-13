@@ -1,10 +1,35 @@
 import { describe, expect, test } from "vitest";
 
-import { createExcerpt, estimateReadingMinutes, plainTextFromMarkdown, toSlug } from "./text.ts";
+import {
+  createArticleDescription,
+  createExcerpt,
+  createTitleInitial,
+  estimateReadingMinutes,
+  plainTextFromMarkdown,
+  stripLeadingTitleHeading,
+  toSlug,
+} from "./text.ts";
 
 describe("text helpers", () => {
   test("creates lowercase pinyin slugs for Chinese titles", () => {
     expect(toSlug("你好 Next.js 16")).toBe("ni-hao-next-js-16");
+  });
+
+  test.each([
+    ["用 Prisma 管住边界", "Y"],
+    ["重庆博客", "C"],
+    ["重构系统", "C"],
+    ["重量级更新", "Z"],
+    ["🚀 École 2.0", "E"],
+    ["Ｃ＋＋ ２０２６", "C"],
+    ["2026 年度回顾", "2"],
+    ["🚀 / ++", "P"],
+  ])("creates the title Glyph initial for %s", (title, expected) => {
+    expect(createTitleInitial(title)).toBe(expected);
+  });
+
+  test("normalizes composed and decomposed title initials identically", () => {
+    expect(createTitleInitial("École")).toBe(createTitleInitial("E\u0301cole"));
   });
 
   test("removes markdown punctuation from plain text", () => {
@@ -16,6 +41,32 @@ describe("text helpers", () => {
 
     expect(createExcerpt(content)).toHaveLength(183);
     expect(createExcerpt(content).endsWith("...")).toBe(true);
+  });
+
+  test("removes a matching title heading before truncating an excerpt", () => {
+    const title = "t".repeat(120);
+    const body = "b".repeat(200);
+
+    expect(createExcerpt(`# ${title}\n\n${body}`, title)).toBe(`${"b".repeat(180)}...`);
+  });
+
+  test("removes a repeated article title from a generated description", () => {
+    expect(
+      createArticleDescription({
+        excerpt: "把 Pretext 放进博客阅读体验 Pretext 不是 Markdown 渲染器。",
+        title: "把 Pretext 放进博客阅读体验",
+      }),
+    ).toBe("Pretext 不是 Markdown 渲染器。");
+  });
+
+  test("keeps descriptions whose opening only partially matches the title", () => {
+    expect(createArticleDescription({ excerpt: "Aided design notes", title: "AI" })).toBe("Aided design notes");
+  });
+
+  test("keeps a leading heading that does not match the article title", () => {
+    expect(stripLeadingTitleHeading("# A different heading\n\nBody", "Article title")).toBe(
+      "# A different heading\n\nBody",
+    );
   });
 
   test("keeps reading time at one minute for short content", () => {

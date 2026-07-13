@@ -18,14 +18,31 @@ export type DashboardActivity = {
 export async function getAdminDashboardData() {
   const todayStart = startOfDay(new Date());
   const weekStart = addDays(todayStart, -(VISIT_DAYS - 1));
-  const [postStats, commentStats, recentPosts, recentComments, totalViews, weekViews, pathViews] = await Promise.all([
+  const [postStats, commentStats, recentPosts, recentComments, totalViews, weekViews, pathViews, zeroResultQueries] = await Promise.all([
     getPostStats(),
     getCommentStats(),
     getRecentPosts(),
     getRecentComments(),
-    prisma.pageView.count(),
-    prisma.pageView.findMany({ select: { createdAt: true, path: true }, where: { createdAt: { gte: weekStart } } }),
-    prisma.pageView.groupBy({ by: ["path"], _count: { path: true } }),
+    prisma.analyticsDailyMetric.aggregate({
+      _sum: { count: true },
+      where: { type: "PAGE_VIEW" },
+    }),
+    prisma.analyticsDailyMetric.findMany({
+      select: { count: true, date: true, path: true },
+      where: { date: { gte: weekStart }, type: "PAGE_VIEW" },
+    }),
+    prisma.analyticsDailyMetric.groupBy({
+      by: ["path"],
+      _sum: { count: true },
+      where: { type: "PAGE_VIEW" },
+    }),
+    prisma.analyticsDailyMetric.groupBy({
+      by: ["dimension"],
+      _sum: { count: true },
+      orderBy: { _sum: { count: "desc" } },
+      take: TOP_PATH_LIMIT,
+      where: { type: "SEARCH_ZERO" },
+    }),
   ]);
 
   return {
@@ -35,10 +52,14 @@ export async function getAdminDashboardData() {
     recentActivities: createRecentActivities(recentPosts, recentComments),
     topPaths: createTopPaths(pathViews),
     visitStats: {
-      today: weekViews.filter((view) => view.createdAt >= todayStart).length,
-      total: totalViews,
-      week: weekViews.length,
+      today: sumCounts(weekViews.filter((view) => view.date >= todayStart)),
+      total: totalViews._sum.count ?? 0,
+      week: sumCounts(weekViews),
     },
+    zeroResultQueries: zeroResultQueries.map((item) => ({
+      count: item._sum.count ?? 0,
+      query: item.dimension,
+    })),
   };
 }
 
@@ -113,33 +134,37 @@ function getCommentStatusLabel(status: CommentStatus) {
   return labels[status];
 }
 
-function createDailyVisits(views: readonly { readonly createdAt: Date }[], start: Date) {
+function createDailyVisits(views: readonly { readonly count: number; readonly date: Date }[], start: Date) {
   return Array.from({ length: VISIT_DAYS }, (_, index) => {
     const date = addDays(start, index);
-    const count = views.filter((view) => isSameDay(view.createdAt, date)).length;
+    const count = sumCounts(views.filter((view) => view.date.getTime() === date.getTime()));
     return { count, label: formatDayLabel(date) };
   });
 }
 
-function createTopPaths(pathViews: readonly { readonly path: string; readonly _count: { readonly path: number } }[]) {
+function createTopPaths(pathViews: readonly { readonly path: string; readonly _sum: { readonly count: number | null } }[]) {
   return pathViews
-    .map((item) => ({ count: item._count.path, path: item.path }))
+    .map((item) => ({ count: item._sum.count ?? 0, path: item.path }))
     .sort((left, right) => right.count - left.count)
     .slice(0, TOP_PATH_LIMIT);
 }
 
 function startOfDay(date: Date) {
-  return new Date(date.getFullYear(), date.getMonth(), date.getDate());
+  return new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate()));
 }
 
 function addDays(date: Date, days: number) {
   return new Date(date.getTime() + days * DAY_MS);
 }
 
-function isSameDay(left: Date, right: Date) {
-  return startOfDay(left).getTime() === startOfDay(right).getTime();
+function sumCounts(items: readonly { readonly count: number }[]) {
+  return items.reduce((total, item) => total + item.count, 0);
 }
 
 function formatDayLabel(date: Date) {
-  return new Intl.DateTimeFormat("zh-CN", { day: "2-digit", month: "2-digit" }).format(date);
+  return new Intl.DateTimeFormat("zh-CN", {
+    day: "2-digit",
+    month: "2-digit",
+    timeZone: "UTC",
+  }).format(date);
 }

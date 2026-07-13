@@ -1,10 +1,10 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState, type RefObject } from "react";
+import { useDeferredValue, useEffect, useMemo, useRef, useState, type RefObject } from "react";
 import { Bold, CheckSquare, Code2, Eye, Heading2, Image, Italic, Link, List, Pilcrow, Quote, Table2 } from "lucide-react";
 import { layout, prepare } from "@chenglou/pretext";
 
-import { DynamicArticleLayout } from "@/components/dynamic-article-layout";
+import { MarkdownContent } from "@/components/markdown-content";
 import { useClientMounted } from "@/components/use-client-mounted";
 import { analyzeEditorial, type EditorialReport } from "@/lib/editorial-engine";
 import { estimateReadingMinutes, plainTextFromMarkdown } from "@/lib/text";
@@ -26,12 +26,15 @@ type MarkdownEditorProps = {
   readonly value: string;
 };
 
-type EditorStats = {
+type DocumentStats = {
   readonly chars: number;
-  readonly cursorLine: number;
   readonly height: number;
   readonly lines: number;
   readonly minutes: number;
+};
+
+type EditorStats = DocumentStats & {
+  readonly cursorLine: number;
   readonly paragraph: ParagraphInsight;
 };
 
@@ -74,8 +77,22 @@ export function MarkdownEditor({ draft, excerpt, setValue, title, value }: Markd
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const previewRef = useRef<HTMLDivElement>(null);
   const mounted = useClientMounted();
-  const stats = useMemo(() => createStats({ cursor, markdown: value, mounted, width: editorWidth }), [cursor, editorWidth, mounted, value]);
-  const report = useMemo(() => getReport({ editorWidth, excerpt, mounted, title, value }), [editorWidth, excerpt, mounted, title, value]);
+  const deferredValue = useDeferredValue(value);
+  const deferredTitle = useDeferredValue(title);
+  const deferredExcerpt = useDeferredValue(excerpt);
+  const documentStats = useMemo(
+    () => createDocumentStats({ markdown: deferredValue, mounted, width: editorWidth }),
+    [deferredValue, editorWidth, mounted],
+  );
+  const currentStats = useMemo(
+    () => createCurrentStats({ cursor, markdown: value, mounted, width: editorWidth }),
+    [cursor, editorWidth, mounted, value],
+  );
+  const report = useMemo(
+    () => getReport({ editorWidth, excerpt: deferredExcerpt, mounted, title: deferredTitle, value: deferredValue }),
+    [deferredExcerpt, deferredTitle, deferredValue, editorWidth, mounted],
+  );
+  const stats = { ...documentStats, ...currentStats };
 
   useTextareaWidth(textareaRef, setEditorWidth);
 
@@ -83,7 +100,16 @@ export function MarkdownEditor({ draft, excerpt, setValue, title, value }: Markd
     <section className="markdown-editor">
       <EditorHeader draft={draft} mode={mode} report={report} setMode={setMode} stats={stats} />
       <Toolbar onInsert={(before, after) => insertAroundSelection({ after, before, setCursor, setValue, textarea: textareaRef.current })} />
-      <EditorWorkspace mode={mode} previewRef={previewRef} setCursor={setCursor} setValue={setValue} stats={stats} textareaRef={textareaRef} value={value} />
+      <EditorWorkspace
+        mode={mode}
+        previewRef={previewRef}
+        previewValue={deferredValue}
+        setCursor={setCursor}
+        setValue={setValue}
+        stats={stats}
+        textareaRef={textareaRef}
+        value={value}
+      />
       <EditorialPanel report={report} stats={stats} />
     </section>
   );
@@ -146,13 +172,14 @@ function Toolbar({ onInsert }: { readonly onInsert: (before: string, after: stri
 function EditorWorkspace(props: {
   readonly mode: EditorMode;
   readonly previewRef: RefObject<HTMLDivElement | null>;
+  readonly previewValue: string;
   readonly setCursor: (cursor: number) => void;
   readonly setValue: (value: string) => void;
   readonly stats: EditorStats;
   readonly textareaRef: RefObject<HTMLTextAreaElement | null>;
   readonly value: string;
 }) {
-  const { mode, previewRef, setCursor, setValue, stats, textareaRef, value } = props;
+  const { mode, previewRef, previewValue, setCursor, setValue, stats, textareaRef, value } = props;
 
   return (
     <>
@@ -160,7 +187,7 @@ function EditorWorkspace(props: {
       <div className={mode === "preview" ? "markdown-editor__workspace is-preview" : "markdown-editor__workspace"}>
         {mode === "write" ? <EditorTextarea setCursor={setCursor} setValue={setValue} stats={stats} textareaRef={textareaRef} value={value} /> : null}
         <div className="markdown-editor__preview" ref={previewRef}>
-          <DynamicArticleLayout content={value || "## 预览\n\n开始输入 Markdown 后，这里会实时渲染。"} />
+          <MarkdownContent content={previewValue || "## 预览\n\n开始输入 Markdown 后，这里会实时渲染。"} />
         </div>
       </div>
     </>
@@ -233,12 +260,21 @@ function getReport(options: { readonly editorWidth: number; readonly excerpt: st
   return analyzeEditorial({ title: options.title, excerpt: options.excerpt, markdown: options.value, width: options.editorWidth });
 }
 
-function createStats({ cursor, markdown, mounted, width }: { readonly cursor: number; readonly markdown: string; readonly mounted: boolean; readonly width: number }): EditorStats {
+function createDocumentStats({ markdown, mounted, width }: { readonly markdown: string; readonly mounted: boolean; readonly width: number }): DocumentStats {
   const plainText = plainTextFromMarkdown(markdown);
   const layoutStats = mounted ? measureMarkdown({ markdown, width }) : { lines: 0, height: 0 };
-  const paragraph = mounted ? measureCurrentParagraph({ cursor, markdown, width }) : createEmptyParagraphInsight();
 
-  return { chars: plainText.length, cursorLine: getCursorLine(markdown, cursor), minutes: estimateReadingMinutes(markdown), paragraph, ...layoutStats };
+  return { chars: plainText.length, minutes: estimateReadingMinutes(markdown), ...layoutStats };
+}
+
+function createCurrentStats({ cursor, markdown, mounted, width }: {
+  readonly cursor: number;
+  readonly markdown: string;
+  readonly mounted: boolean;
+  readonly width: number;
+}): Pick<EditorStats, "cursorLine" | "paragraph"> {
+  const paragraph = mounted ? measureCurrentParagraph({ cursor, markdown, width }) : createEmptyParagraphInsight();
+  return { cursorLine: getCursorLine(markdown, cursor), paragraph };
 }
 
 function insertAroundSelection(options: {

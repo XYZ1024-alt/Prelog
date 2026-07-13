@@ -1,10 +1,11 @@
 "use server";
 
 import bcrypt from "bcryptjs";
-import { revalidatePath } from "next/cache";
+import { revalidatePath, updateTag } from "next/cache";
 import { redirect } from "next/navigation";
 
 import { toAdminPath } from "@/lib/admin-path";
+import { createSiteSettingsMutationCacheTags } from "@/lib/cache-tags";
 import { ADMIN_USER_ID, SITE_SETTINGS_ID } from "@/lib/constants";
 import { prisma } from "@/lib/prisma";
 import { requireAdmin } from "@/lib/session";
@@ -79,9 +80,7 @@ export async function updateSiteSettings(formData: FormData) {
     create: { id: SITE_SETTINGS_ID, ...parsed },
   });
 
-  revalidatePath("/");
-  revalidatePath("/about");
-  revalidatePath("/search");
+  createSiteSettingsMutationCacheTags().forEach((tag) => updateTag(tag));
   revalidatePath("/admin");
   revalidatePath("/admin/settings");
   redirect(toAdminPath("/settings?updated=site"));

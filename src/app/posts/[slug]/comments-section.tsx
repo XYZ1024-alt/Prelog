@@ -31,7 +31,8 @@ export function CommentsSection({ comments, postId, slug }: CommentsSectionProps
 
   function handleReply(target: ReplyTarget) {
     setReplyTarget(target);
-    requestAnimationFrame(() => formAnchorRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }));
+    const behavior = window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth";
+    requestAnimationFrame(() => formAnchorRef.current?.scrollIntoView({ behavior, block: "start" }));
   }
 
   return (

@@ -12,7 +12,10 @@ export function ThemeToggle() {
   return (
     <button className="icon-button theme-toggle" type="button" onClick={toggleTheme} aria-label={mounted ? label : "切换主题"}>
       <span className="theme-toggle__track" aria-hidden="true">
-        <span className="theme-toggle__thumb">{mounted && dark ? <Moon size={16} /> : <Sun size={16} />}</span>
+        <span className="theme-toggle__thumb">
+          <Sun className="theme-toggle__icon theme-toggle__icon--sun" size={16} />
+          <Moon className="theme-toggle__icon theme-toggle__icon--moon" size={16} />
+        </span>
       </span>
     </button>
   );

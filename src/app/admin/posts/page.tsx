@@ -3,7 +3,7 @@ import { Plus } from "lucide-react";
 import type { PostStatus } from "@/generated/prisma/client";
 
 import { AdminNav } from "@/app/admin/admin-nav";
-import { deletePost, togglePostStatus } from "@/app/admin/posts/actions";
+import { PostRowActions } from "@/app/admin/posts/post-row-actions";
 import { SubmitButton } from "@/components/submit-button";
 import { toAdminPath } from "@/lib/admin-path";
 import { prisma } from "@/lib/prisma";
@@ -72,23 +72,12 @@ export default async function AdminPostsPage({ searchParams }: AdminPostsPagePro
                   {getPostStatusLabel(post.status)} · {post.category?.name ?? "未分类"} · {post._count.comments} 条评论
                 </span>
               </div>
-              <div className="admin-row__actions">
-                <Link className="button button--ghost" href={toAdminPath(`/posts/${post.id}/edit`)}>
-                  编辑
-                </Link>
-                <form action={togglePostStatus}>
-                  <input name="id" type="hidden" value={post.id} />
-                  <SubmitButton className="button button--ghost" pendingChildren="处理中...">
-                    {post.status === "PUBLISHED" ? "撤回" : "发布"}
-                  </SubmitButton>
-                </form>
-                <form action={deletePost}>
-                  <input name="id" type="hidden" value={post.id} />
-                  <SubmitButton className="button button--danger" pendingChildren="删除中...">
-                    删除
-                  </SubmitButton>
-                </form>
-              </div>
+              <PostRowActions
+                editHref={toAdminPath(`/posts/${post.id}/edit`)}
+                id={post.id}
+                status={post.status}
+                updatedAt={post.updatedAt.toISOString()}
+              />
             </article>
           ))}
           {posts.length === 0 ? <p className="empty-state">没有匹配文章，换个关键词或状态试试。</p> : null}
