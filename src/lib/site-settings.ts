@@ -26,7 +26,7 @@ async function querySiteSettings() {
 
 const getCachedSiteSettings = createPublicCachedQuery(
   querySiteSettings,
-  ["prelog:query:site-settings:v1"],
+  ["prelog:query:site-settings:v2"],
   [SITE_SETTINGS_CACHE_TAG],
 );
 

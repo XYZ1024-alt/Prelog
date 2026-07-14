@@ -1,6 +1,8 @@
+import { ExternalLink, ListFilter } from "lucide-react";
 import Link from "next/link";
 
-import { AdminNav } from "@/app/admin/admin-nav";
+import { AdminPageHeader } from "@/app/admin/admin-page-header";
+import { AdminShell } from "@/app/admin/admin-shell";
 import { SubmitButton } from "@/components/submit-button";
 import { toAdminPath } from "@/lib/admin-path";
 import { prisma } from "@/lib/prisma";
@@ -37,22 +39,16 @@ export default async function AdminTagsPage({ searchParams }: AdminTagsPageProps
   });
 
   return (
-    <main className="admin-shell">
-      <AdminNav />
-      <section className="admin-panel">
-        <div className="admin-panel__head">
-          <div>
-            <span className="eyebrow">Tags</span>
-            <h1>标签概览</h1>
-          </div>
-        </div>
-        <form className="admin-filters admin-filters--compact">
-          <input defaultValue={query} name="q" placeholder="搜索标签名或 slug" type="search" />
+    <AdminShell>
+      <AdminPageHeader label="内容组织" title="标签概览" />
+      <form className="admin-filters admin-filters--compact">
+          <label className="sr-only" htmlFor="admin-tag-search">搜索标签</label>
+          <input defaultValue={query} id="admin-tag-search" name="q" placeholder="搜索标签名或 slug" type="search" />
           <SubmitButton className="button button--ghost" pendingChildren="筛选中...">
             筛选
           </SubmitButton>
-        </form>
-        <div className="admin-table">
+      </form>
+      <div className="admin-table">
           {tags.map((tag) => (
             <article className="admin-row" key={tag.id}>
               <div>
@@ -64,9 +60,11 @@ export default async function AdminTagsPage({ searchParams }: AdminTagsPageProps
               </div>
               <div className="admin-row__actions">
                 <Link className="button button--ghost" href={`/tags/${tag.slug}`}>
+                  <ExternalLink aria-hidden="true" size={15} />
                   查看前台
                 </Link>
                 <Link className="button button--ghost" href={toAdminPath(`/posts?tag=${encodeURIComponent(tag.slug)}`)}>
+                  <ListFilter aria-hidden="true" size={15} />
                   查看相关文章
                 </Link>
               </div>
@@ -75,9 +73,8 @@ export default async function AdminTagsPage({ searchParams }: AdminTagsPageProps
           {tags.length === 0 ? (
             <p className="empty-state">{query ? "没有匹配标签，换个关键词试试。" : "当前还没有正在使用的标签。"}</p>
           ) : null}
-        </div>
-      </section>
-    </main>
+      </div>
+    </AdminShell>
   );
 }
 

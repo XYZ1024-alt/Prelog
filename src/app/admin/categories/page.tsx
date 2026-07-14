@@ -1,7 +1,8 @@
 import Link from "next/link";
-import { Plus } from "lucide-react";
+import { Pencil, Plus, Trash2 } from "lucide-react";
 
-import { AdminNav } from "@/app/admin/admin-nav";
+import { AdminPageHeader } from "@/app/admin/admin-page-header";
+import { AdminShell } from "@/app/admin/admin-shell";
 import { deleteCategory } from "@/app/admin/categories/actions";
 import { SubmitButton } from "@/components/submit-button";
 import { toAdminPath } from "@/lib/admin-path";
@@ -33,26 +34,25 @@ export default async function AdminCategoriesPage({ searchParams }: AdminCategor
   });
 
   return (
-    <main className="admin-shell">
-      <AdminNav />
-      <section className="admin-panel">
-        <div className="admin-panel__head">
-          <div>
-            <span className="eyebrow">Categories</span>
-            <h1>分类管理</h1>
-          </div>
+    <AdminShell>
+      <AdminPageHeader
+        actions={(
           <Link className="button button--primary" href={toAdminPath("/categories/new")}>
             <Plus size={16} />
             新建分类
           </Link>
-        </div>
-        <form className="admin-filters admin-filters--compact">
-          <input defaultValue={query} name="q" placeholder="搜索分类名称、slug 或描述" type="search" />
+        )}
+        label="内容组织"
+        title="分类管理"
+      />
+      <form className="admin-filters admin-filters--compact">
+          <label className="sr-only" htmlFor="admin-category-search">搜索分类</label>
+          <input defaultValue={query} id="admin-category-search" name="q" placeholder="搜索分类名称、slug 或描述" type="search" />
           <SubmitButton className="button button--ghost" pendingChildren="筛选中...">
             筛选
           </SubmitButton>
-        </form>
-        <div className="admin-table">
+      </form>
+      <div className="admin-table">
           {categories.map((category) => (
             <article className="admin-row" key={category.id}>
               <div>
@@ -64,11 +64,13 @@ export default async function AdminCategoriesPage({ searchParams }: AdminCategor
               </div>
               <div className="admin-row__actions">
                 <Link className="button button--ghost" href={toAdminPath(`/categories/${category.id}/edit`)}>
+                  <Pencil aria-hidden="true" size={15} />
                   编辑
                 </Link>
                 <form action={deleteCategory}>
                   <input name="id" type="hidden" value={category.id} />
                   <SubmitButton className="button button--danger" pendingChildren="删除中...">
+                    <Trash2 aria-hidden="true" size={15} />
                     删除
                   </SubmitButton>
                 </form>
@@ -76,8 +78,7 @@ export default async function AdminCategoriesPage({ searchParams }: AdminCategor
             </article>
           ))}
           {categories.length === 0 ? <p className="empty-state">{query ? "没有匹配分类，换个关键词试试。" : "还没有分类，先新建一个分类。"}</p> : null}
-        </div>
-      </section>
-    </main>
+      </div>
+    </AdminShell>
   );
 }

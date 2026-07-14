@@ -54,20 +54,39 @@ model User {
 }
 
 model SiteSettings {
-  id              String   @id
-  siteName        String
-  siteTagline     String
-  heroTitle       String
-  heroExcerpt     String
-  aboutTitle      String
-  aboutIntro      String
-  aboutWriting    String
-  aboutAudience   String
-  aboutTopics     String
-  footerPrimary   String
-  footerSecondary String
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
+  id                    String   @id
+  siteName              String
+  siteTagline           String
+  heroTitle             String
+  heroExcerpt           String
+  aboutTitle            String
+  aboutIntro            String
+  aboutWriting          String
+  aboutAudience         String
+  aboutTopics           String
+  footerPrimary         String
+  footerSecondary       String
+  friendsEnabled        Boolean  @default(true)
+  friendsIntro          String   @default("这里收录了一些值得阅读与长期关注的朋友和站点。")
+  friendsRequirements   String   @default("网站可正常访问\n内容以原创为主\n已添加本站友链\n不含违法、侵权或低质量采集内容")
+  friendsContactLabel   String   @default("联系站长")
+  friendsContactUrl     String   @default("/about")
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+}
+
+model FriendLink {
+  id          String   @id @default(cuid())
+  name        String
+  url         String   @unique
+  description String
+  logoUrl     String?
+  sortOrder   Int      @default(0)
+  isVisible   Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([isVisible, sortOrder, name])
 }
 
 model Category {

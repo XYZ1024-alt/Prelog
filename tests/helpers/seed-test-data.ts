@@ -25,6 +25,17 @@ export const TEST_POSTS = {
   },
 } as const;
 
+export const TEST_FRIEND_LINKS = {
+  hidden: {
+    name: "Hidden Friend",
+    url: "https://hidden.example.com/",
+  },
+  visible: {
+    name: "Visible Friend",
+    url: "https://visible.example.com/",
+  },
+} as const;
+
 const HASH_ROUNDS = 12;
 const FIRST_PUBLISHED_AT = new Date("2026-01-10T08:00:00.000Z");
 const SECOND_PUBLISHED_AT = new Date("2026-01-11T08:00:00.000Z");
@@ -45,6 +56,24 @@ export async function seedTestData(prisma: PrismaClient) {
   });
   await prisma.siteSettings.create({
     data: createSiteSettings(),
+  });
+  await prisma.friendLink.createMany({
+    data: [
+      {
+        description: "A visible friend link used by public page tests.",
+        isVisible: true,
+        name: TEST_FRIEND_LINKS.visible.name,
+        sortOrder: 10,
+        url: TEST_FRIEND_LINKS.visible.url,
+      },
+      {
+        description: "A hidden friend link used by visibility tests.",
+        isVisible: false,
+        name: TEST_FRIEND_LINKS.hidden.name,
+        sortOrder: 0,
+        url: TEST_FRIEND_LINKS.hidden.url,
+      },
+    ],
   });
   await createPublishedPost(prisma, {
     categoryId: engineering.id,
@@ -71,7 +100,11 @@ const semantic = true;
 plain code
 
 with spacing
-\`\`\``,
+\`\`\`
+
+## Delivery
+
+The second section makes article navigation progress observable.`,
     publishedAt: FIRST_PUBLISHED_AT,
     slug: TEST_POSTS.published.slug,
     tags: [nextTag, prismaTag],
@@ -101,6 +134,11 @@ function createSiteSettings() {
     aboutWriting: "Engineering notes and product decisions.",
     footerPrimary: "Test Prelog footer",
     footerSecondary: "Built for automated verification",
+    friendsContactLabel: "Contact Test Prelog",
+    friendsContactUrl: "/about",
+    friendsEnabled: true,
+    friendsIntro: "A deterministic friend directory for release checks.",
+    friendsRequirements: "Runs over HTTPS\nPublishes original writing",
     heroExcerpt: "Release-focused notes for the test suite.",
     heroTitle: "Test Prelog",
     id: SITE_SETTINGS_ID,

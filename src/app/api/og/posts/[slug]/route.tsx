@@ -14,7 +14,7 @@ const MAX_TITLE_CHARACTERS = 52;
 const MAX_TAGS = 3;
 const IMMUTABLE_CACHE = "public, max-age=31536000, immutable";
 const OG_BRAND = "PRELOG";
-const UNCATEGORIZED_LABEL = "Uncategorized";
+const UNCATEGORIZED_LABEL = "未分类";
 
 type RouteContext = {
   readonly params: Promise<{ slug: string }>;
@@ -45,8 +45,8 @@ export async function GET(request: Request, { params }: RouteContext) {
       <div
         lang="zh-CN"
         style={{
-          background: "#f7f7f1",
-          color: "#101112",
+          background: "#f7f7f5",
+          color: "#17181a",
           display: "flex",
           height: "100%",
           padding: "54px 58px",
@@ -76,8 +76,8 @@ export async function GET(request: Request, { params }: RouteContext) {
           }}
         />
         <div style={{ display: "flex", flexDirection: "column", justifyContent: "space-between", width: "59%" }}>
-          <div style={{ color: "#2355ff", display: "flex", fontSize: 18, fontWeight: 700, textTransform: "uppercase" }}>
-            {cover.recipe.labels.category ?? UNCATEGORIZED_LABEL} / Journal entry
+          <div style={{ color: "#2457ff", display: "flex", fontSize: 18, fontWeight: 700, textTransform: "uppercase" }}>
+            {cover.recipe.labels.category ?? UNCATEGORIZED_LABEL} / 写作记录
           </div>
           <div style={{ display: "flex", flexDirection: "column", gap: 26 }}>
             <div
@@ -92,13 +92,13 @@ export async function GET(request: Request, { params }: RouteContext) {
             >
               {truncateTitle(cover.recipe.labels.title)}
             </div>
-            <div style={{ color: "#626870", display: "flex", fontSize: 19, gap: 18 }}>
+            <div style={{ color: "#6a7079", display: "flex", fontSize: 19, gap: 18 }}>
               {cover.recipe.labels.tags.slice(0, MAX_TAGS).map((tag) => (
                 <span key={tag}>#{tag}</span>
               ))}
             </div>
           </div>
-          <div style={{ color: "#626870", display: "flex", fontSize: 16, gap: 18, textTransform: "uppercase" }}>
+          <div style={{ color: "#6a7079", display: "flex", fontSize: 16, gap: 18, textTransform: "uppercase" }}>
             <span>{OG_BRAND}</span>
             <span>{formatLegend(cover.recipe)}</span>
           </div>
@@ -106,7 +106,7 @@ export async function GET(request: Request, { params }: RouteContext) {
         <div
           style={{
             alignItems: "center",
-            color: "#2355ff",
+            color: "#527200",
             display: "flex",
             justifyContent: "center",
             overflow: "hidden",
@@ -156,6 +156,6 @@ function getTitleSize(title: string) {
 }
 
 function formatLegend(recipe: GlyphRecipe) {
-  const initial = getGlyphRecipeInitial(recipe) ?? "LEGACY";
-  return `Initial ${initial} / Sections ${recipe.legend.sections} / Code ${recipe.legend.codeBlocks}`;
+  const initial = getGlyphRecipeInitial(recipe) ?? "旧版";
+  return `首字 ${initial} / 章节 ${recipe.legend.sections} / 代码 ${recipe.legend.codeBlocks}`;
 }

@@ -1,6 +1,7 @@
 import { ShieldCheck } from "lucide-react";
 
-import { AdminNav } from "@/app/admin/admin-nav";
+import { AdminPageHeader } from "@/app/admin/admin-page-header";
+import { AdminShell } from "@/app/admin/admin-shell";
 import { updateAdminProfile, updateSiteSettings } from "@/app/admin/settings/actions";
 import { SettingsForm } from "@/app/admin/settings/settings-form";
 import { SiteSettingsForm } from "@/app/admin/settings/site-settings-form";
@@ -17,17 +18,10 @@ export default async function AdminSettingsPage({ searchParams }: SettingsPagePr
   const [{ error, updated }, { user }, siteSettings] = await Promise.all([searchParams, requireAdmin(), getSiteSettings()]);
 
   return (
-    <main className="admin-shell">
-      <AdminNav />
-      <section className="admin-panel">
-        <div className="admin-panel__head">
-          <div>
-            <span className="eyebrow">Admin</span>
-            <h1>管理员设置</h1>
-          </div>
-        </div>
+    <AdminShell>
+      <AdminPageHeader label="系统设置" title="管理员设置" />
 
-        <section className="admin-card admin-card--settings">
+      <section className="admin-section admin-section--settings">
           <div className="admin-card__head">
             <h2>管理员资料</h2>
             <span>登录信息</span>
@@ -43,8 +37,8 @@ export default async function AdminSettingsPage({ searchParams }: SettingsPagePr
             action={updateAdminProfile}
             defaults={{ email: user.email, name: user.name }}
           />
-        </section>
-        <section className="admin-card admin-card--settings">
+      </section>
+      <section className="admin-section admin-section--settings">
           <div className="admin-card__head">
             <h2>站点内容设置</h2>
             <span>单站点单配置</span>
@@ -55,8 +49,7 @@ export default async function AdminSettingsPage({ searchParams }: SettingsPagePr
           </div>
           {updated === "site" ? <p className="form-success">站点设置已保存。</p> : null}
           <SiteSettingsForm action={updateSiteSettings} defaults={siteSettings} />
-        </section>
       </section>
-    </main>
+    </AdminShell>
   );
 }

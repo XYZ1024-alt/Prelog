@@ -3,6 +3,7 @@ export const SITE_SETTINGS_CACHE_TAG = "prelog:site-settings";
 export const POSTS_CACHE_TAG = "prelog:posts";
 export const CATEGORIES_CACHE_TAG = "prelog:categories";
 export const TAGS_CACHE_TAG = "prelog:tags";
+export const FRIEND_LINKS_CACHE_TAG = "prelog:friend-links";
 export const PUBLIC_CONTENT_REVALIDATE_SECONDS = 60 * 60;
 
 const CACHE_TAG_SEGMENT_MAX = 180;
@@ -61,6 +62,10 @@ export function createCommentMutationCacheTags(slug: string) {
 
 export function createSiteSettingsMutationCacheTags() {
   return [PUBLIC_CONTENT_CACHE_TAG, SITE_SETTINGS_CACHE_TAG];
+}
+
+export function createFriendLinksMutationCacheTags() {
+  return [PUBLIC_CONTENT_CACHE_TAG, FRIEND_LINKS_CACHE_TAG];
 }
 
 function createCacheTagSegment(value: string) {

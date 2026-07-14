@@ -11,6 +11,9 @@ type AnalyticsEvent =
   | { readonly path: string; readonly query: string; readonly type: "SEARCH" | "SEARCH_ZERO" };
 
 const ANALYTICS_ENDPOINT = "/api/analytics";
+const ARTICLE_CONTENT_SELECTOR = "h2, h3, p, pre, blockquote, figure, ul, ol, table";
+const ARTICLE_SELECTOR = ".markdown-body";
+const ARTICLE_WAIT_TIMEOUT_MS = 5_000;
 const EXCLUDED_PREFIXES = Array.from(new Set([PUBLIC_ADMIN_PATH, "/admin", "/api", "/preview"]));
 const READ_DEPTHS = ["25", "50", "90"] as const;
 const SEARCH_QUERY_MAX = 80;
@@ -62,41 +65,92 @@ function reportSearch(path: string, searchParams: URLSearchParams, navigationKey
 }
 
 function trackReadDepth(path: string) {
-  const article = document.querySelector<HTMLElement>(".markdown-body");
+  let stopObservingArticle: (() => void) | undefined;
 
-  if (!article) {
-    console.error("Analytics could not find .markdown-body for article read-depth tracking.");
-    return;
+  function startTracking() {
+    const article = findVisibleArticle();
+
+    if (!article) {
+      return false;
+    }
+
+    stopObservingArticle = observeReadDepth(article, path);
+    return true;
   }
 
-  let animationFrame = 0;
-  const update = () => {
-    animationFrame = 0;
-    const articleTop = article.getBoundingClientRect().top + window.scrollY;
-    const visibleArticleHeight = window.scrollY + window.innerHeight - articleTop;
-    const progress = Math.max(0, Math.min(100, (visibleArticleHeight / article.scrollHeight) * 100));
+  if (startTracking()) {
+    return () => stopObservingArticle?.();
+  }
 
-    READ_DEPTHS.forEach((depth) => {
-      if (progress >= Number(depth)) {
-        reportOnce({ depth, path, type: "READ_DEPTH" });
-      }
-    });
-  };
-  const scheduleUpdate = () => {
-    if (!animationFrame) {
-      animationFrame = window.requestAnimationFrame(update);
-    }
-  };
-
-  window.addEventListener("resize", scheduleUpdate);
-  window.addEventListener("scroll", scheduleUpdate, { passive: true });
-  scheduleUpdate();
+  const streamObserver = new MutationObserver(() => {
+    if (!startTracking()) return;
+    streamObserver.disconnect();
+    window.clearTimeout(timeoutId);
+  });
+  const timeoutId = window.setTimeout(() => {
+    streamObserver.disconnect();
+    console.error("Analytics could not find visible article content for read-depth tracking.");
+  }, ARTICLE_WAIT_TIMEOUT_MS);
+  streamObserver.observe(document.body, { childList: true, subtree: true });
 
   return () => {
-    window.cancelAnimationFrame(animationFrame);
-    window.removeEventListener("resize", scheduleUpdate);
-    window.removeEventListener("scroll", scheduleUpdate);
+    streamObserver.disconnect();
+    window.clearTimeout(timeoutId);
+    stopObservingArticle?.();
   };
+}
+
+function findVisibleArticle() {
+  return Array.from(document.querySelectorAll<HTMLElement>(ARTICLE_SELECTOR)).find((article) => (
+    !article.closest("[hidden]") && article.querySelector(ARTICLE_CONTENT_SELECTOR)
+  ));
+}
+
+function observeReadDepth(article: HTMLElement, path: string) {
+  const contentElements = Array.from(article.querySelectorAll<HTMLElement>(ARTICLE_CONTENT_SELECTOR));
+  const depthsByElement = createReadDepthTargets(article, contentElements, path);
+  const observer = new IntersectionObserver((entries) => {
+    entries.forEach((entry) => {
+      if (!entry.isIntersecting) return;
+
+      const depths = depthsByElement.get(entry.target) ?? [];
+      depths.forEach((depth) => reportOnce({ depth, path, type: "READ_DEPTH" }));
+      observer.unobserve(entry.target);
+    });
+  });
+
+  depthsByElement.forEach((_depths, element) => observer.observe(element));
+  return () => observer.disconnect();
+}
+
+function createReadDepthTargets(
+  article: HTMLElement,
+  contentElements: readonly HTMLElement[],
+  path: string,
+) {
+  const articleRect = article.getBoundingClientRect();
+  const articleTop = articleRect.top + window.scrollY;
+  const viewportBottom = window.scrollY + window.innerHeight;
+  const depthsByElement = new Map<Element, (typeof READ_DEPTHS)[number][]>();
+
+  READ_DEPTHS.forEach((depth) => {
+    const thresholdOffset = article.scrollHeight * (Number(depth) / 100);
+
+    if (viewportBottom >= articleTop + thresholdOffset) {
+      reportOnce({ depth, path, type: "READ_DEPTH" });
+    }
+
+    const target = contentElements.find((element) => {
+      const rect = element.getBoundingClientRect();
+      const midpointOffset = rect.top - articleRect.top + rect.height / 2;
+      return midpointOffset >= thresholdOffset;
+    }) ?? contentElements.at(-1)!;
+
+    const depths = depthsByElement.get(target) ?? [];
+    depthsByElement.set(target, [...depths, depth]);
+  });
+
+  return depthsByElement;
 }
 
 export function normalizeAnalyticsSearchQuery(value: string) {

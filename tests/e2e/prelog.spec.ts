@@ -22,7 +22,8 @@ test("supports public reading, search, and comment submission", async ({ page })
   await page.goto("/");
   await expect(page.locator("[data-glyph-hero-interactive]"))
     .toHaveAttribute("data-glyph-ready", "true");
-  await expect(page.locator(".glyph-hero__scene--static")).toHaveCSS("visibility", "hidden");
+  await expect(page.locator("body > main .glyph-hero__scene--static"))
+    .toHaveCSS("visibility", "hidden");
   const postLink = page.getByRole("link", { exact: true, name: TEST_POSTS.published.title });
 
   await expect(postLink).toBeVisible();
@@ -66,21 +67,21 @@ test("enables interactive Glyphs only for fine pointers at 820px and wider", asy
 test("keeps Glyphs static below 820px and with reduced motion", async ({ page }) => {
   await page.setViewportSize({ height: 900, width: 819 });
   await page.goto("/");
-  await expect(page.locator(".glyph-hero__scene--static")).toBeVisible();
+  await expect(page.locator(".glyph-hero__scene--static:visible")).toBeVisible();
   await expect(page.locator("[data-glyph-hero-interactive]")).toHaveCount(0);
 
   await page.goto(PUBLISHED_POST_PATH);
-  await expect(page.locator(".article-hero .article-glyph--feature")).toBeVisible();
+  await expect(page.locator(".article-hero .article-glyph--feature:visible")).toBeVisible();
   await expect(page.locator("[data-article-glyph-interactive]")).toHaveCount(0);
 
   await page.setViewportSize({ height: 900, width: 1280 });
   await page.emulateMedia({ reducedMotion: "reduce" });
   await page.goto("/");
-  await expect(page.locator(".glyph-hero__scene--static")).toBeVisible();
+  await expect(page.locator(".glyph-hero__scene--static:visible")).toBeVisible();
   await expect(page.locator("[data-glyph-hero-interactive]")).toHaveCount(0);
 
   await page.goto(PUBLISHED_POST_PATH);
-  await expect(page.locator(".article-hero .article-glyph--feature")).toBeVisible();
+  await expect(page.locator(".article-hero .article-glyph--feature:visible")).toBeVisible();
   await expect(page.locator("[data-article-glyph-interactive]")).toHaveCount(0);
 });
 
@@ -97,11 +98,11 @@ test("keeps coarse-pointer tablet Glyphs static without blocking scroll", async 
       coarse: window.matchMedia("(pointer: coarse)").matches,
       hover: window.matchMedia("(hover: hover)").matches,
     }))).toEqual({ coarse: true, hover: false });
-    await expect(page.locator(".glyph-hero__scene--static")).toBeVisible();
+    await expect(page.locator(".glyph-hero__scene--static:visible")).toBeVisible();
     await expect(page.locator("[data-glyph-hero-interactive]")).toHaveCount(0);
 
     await page.goto(PUBLISHED_POST_PATH);
-    await expect(page.locator(".article-hero .article-glyph--feature")).toBeVisible();
+    await expect(page.locator(".article-hero .article-glyph--feature:visible")).toBeVisible();
     await expect(page.locator("[data-article-glyph-interactive]")).toHaveCount(0);
     await expect.poll(() => page.evaluate(() => document.documentElement.scrollHeight > innerHeight))
       .toBe(true);
@@ -200,23 +201,23 @@ test("lets an administrator create and publish a post", async ({ page }) => {
   await login(page);
   await page.goto(`${ADMIN_PATH}/posts/new`);
 
-  await page.locator('input[name="title"]').fill(E2E_POST.title);
-  await page.locator('input[name="slug"]').fill(E2E_POST.slug);
-  await page.locator('textarea[name="excerpt"]').fill("Excerpt from the E2E test.");
-  await page.locator('input[name="tagNames"]').fill("Next.js, next.js");
-  await page.locator(".markdown-editor__textarea").fill(E2E_POST.content);
-  await expect(page.locator(".post-cover-preview .article-glyph")).toBeVisible();
-  await page.locator('select[name="status"]').selectOption("PUBLISHED");
-  await page.locator("form.post-editor button[type='submit']").click();
+  await page.locator('input[name="title"]:visible').fill(E2E_POST.title);
+  await page.locator('input[name="slug"]:visible').fill(E2E_POST.slug);
+  await page.locator('textarea[name="excerpt"]:visible').fill("Excerpt from the E2E test.");
+  await page.locator('input[name="tagNames"]:visible').fill("Next.js, next.js");
+  await page.locator(".markdown-editor__textarea:visible").fill(E2E_POST.content);
+  await expect(page.locator(".post-cover-preview .article-glyph:visible")).toBeVisible();
+  await page.locator('select[name="status"]:visible').selectOption("PUBLISHED");
+  await page.locator("form.post-editor:visible button[type='submit']").click();
 
   await expect(page).toHaveURL(new RegExp(`${ADMIN_PATH}/posts/.+/edit`));
-  await expect(page.locator('input[name="tagNames"]')).toHaveValue("Next.js");
+  await expect(page.locator('input[name="tagNames"]:visible')).toHaveValue("Next.js");
   const editUrl = page.url();
   await page.goto(`/posts/${E2E_POST.slug}`);
   await expect(page.getByRole("heading", { name: E2E_POST.title })).toBeVisible();
-  const lockedPublishedAt = await page.locator(".article-meta time").getAttribute("datetime");
+  const lockedPublishedAt = await page.locator(".article-meta time:visible").getAttribute("datetime");
   expect(lockedPublishedAt).toBeTruthy();
-  const articleGlyph = page.locator(".article-hero .article-glyph");
+  const articleGlyph = page.locator(".article-hero .article-glyph:visible");
   await expect(articleGlyph).toBeVisible();
   await expect(articleGlyph).toHaveAttribute("data-glyph-initial", "E");
   const lockedHash = await articleGlyph.getAttribute("data-glyph-hash");
@@ -244,47 +245,51 @@ test("lets an administrator create and publish a post", async ({ page }) => {
   expect(ogRedirect.headers().location).toBe(ogImageUrl);
 
   await page.goto(editUrl);
-  await page.locator(".markdown-editor__textarea").fill(E2E_POST.updatedContent);
-  await page.locator("form.post-editor > button[type='submit']").click();
+  await page.locator(".markdown-editor__textarea:visible").fill(E2E_POST.updatedContent);
+  await page.locator("form.post-editor:visible > button[type='submit']").click();
   await expect(page).toHaveURL(new RegExp(`${ADMIN_PATH}/posts$`));
   await page.goto(`/posts/${E2E_POST.slug}`);
-  await expect(page.locator(".article-hero .article-glyph")).toHaveAttribute("data-glyph-hash", lockedHash!);
-  await expect(page.locator(".article-meta time")).toHaveAttribute("datetime", lockedPublishedAt!);
+  await expect(page.locator(".article-hero .article-glyph:visible"))
+    .toHaveAttribute("data-glyph-hash", lockedHash!);
+  await expect(page.locator(".article-meta time:visible"))
+    .toHaveAttribute("datetime", lockedPublishedAt!);
 
   await page.goto(editUrl);
   await page.getByRole("button", { name: "重新生成" }).click();
   await expect(page).toHaveURL(/cover=regenerated/);
   await page.goto(`/posts/${E2E_POST.slug}`);
-  await expect(page.locator(".article-hero .article-glyph")).not.toHaveAttribute("data-glyph-hash", lockedHash!);
-  await expect(page.locator(".article-meta time")).toHaveAttribute("datetime", lockedPublishedAt!);
+  await expect(page.locator(".article-hero .article-glyph:visible"))
+    .not.toHaveAttribute("data-glyph-hash", lockedHash!);
+  await expect(page.locator(".article-meta time:visible"))
+    .toHaveAttribute("datetime", lockedPublishedAt!);
 
   await page.goto(editUrl);
-  await expect(page.locator(".post-cover-mode")).toHaveAttribute("data-client-ready", "true");
-  await page.locator('input[name="coverMode"][value="MANUAL"]').check();
-  await page.locator('input[name="coverImage"]').fill("https://example.com/cover.png");
-  await page.locator("form.post-editor > button[type='submit']").click();
+  await expect(page.locator(".post-cover-mode:visible")).toHaveAttribute("data-client-ready", "true");
+  await page.locator('input[name="coverMode"][value="MANUAL"]:visible').check();
+  await page.locator('input[name="coverImage"]:visible').fill("https://example.com/cover.png");
+  await page.locator("form.post-editor:visible > button[type='submit']").click();
   await expect(page).toHaveURL(new RegExp(`${ADMIN_PATH}/posts$`));
   await page.goto(`/posts/${E2E_POST.slug}`);
   const manualModifiedAt = await page.locator('meta[property="article:modified_time"]').getAttribute("content");
   expect(manualModifiedAt).toBeTruthy();
   await page.goto(editUrl);
-  await expect(page.locator(".post-cover-mode")).toHaveAttribute("data-client-ready", "true");
-  await page.locator('input[name="coverMode"][value="GLYPH"]').check();
-  await page.locator(".post-cover-glyph__regenerate").click();
+  await expect(page.locator(".post-cover-mode:visible")).toHaveAttribute("data-client-ready", "true");
+  await page.locator('input[name="coverMode"][value="GLYPH"]:visible').check();
+  await page.locator(".post-cover-glyph__regenerate:visible").click();
   await expect(page).toHaveURL(/cover=regenerated/);
-  await expect(page.locator('input[name="coverMode"][value="MANUAL"]')).toBeChecked();
+  await expect(page.locator('input[name="coverMode"][value="MANUAL"]:visible')).toBeChecked();
   await page.goto(`/posts/${E2E_POST.slug}`);
   await expect(page.locator('meta[property="article:modified_time"]')).toHaveAttribute("content", manualModifiedAt!);
 
   const staleEditor = await page.context().newPage();
   try {
     await Promise.all([page.goto(editUrl), staleEditor.goto(editUrl)]);
-    await page.locator('textarea[name="excerpt"]').fill("Saved from the first editor.");
-    await page.locator("form.post-editor > button[type='submit']").click();
+    await page.locator('textarea[name="excerpt"]:visible').fill("Saved from the first editor.");
+    await page.locator("form.post-editor:visible > button[type='submit']").click();
     await expect(page).toHaveURL(new RegExp(`${ADMIN_PATH}/posts$`));
 
-    await staleEditor.locator('textarea[name="excerpt"]').fill("Stale editor content.");
-    await staleEditor.locator("form.post-editor > button[type='submit']").click();
+    await staleEditor.locator('textarea[name="excerpt"]:visible').fill("Stale editor content.");
+    await staleEditor.locator("form.post-editor:visible > button[type='submit']").click();
     await expect(staleEditor.locator(".post-editor .form-error")).toContainText("文章已被其他页面修改");
     await expect(staleEditor).toHaveURL(new RegExp(`${ADMIN_PATH}/posts/.+/edit`));
   } finally {
@@ -297,9 +302,9 @@ test("lets an administrator update public site settings", async ({ page }) => {
 
   await login(page);
   await page.goto(`${ADMIN_PATH}/settings`);
-  await page.locator('input[name="siteName"]').fill(nextSiteName);
-  await page.locator('input[name="siteTagline"]').fill("Updated from Playwright");
-  await page.locator('form:has(input[name="siteName"]) button[type="submit"]').click();
+  await page.locator('input[name="siteName"]:visible').fill(nextSiteName);
+  await page.locator('input[name="siteTagline"]:visible').fill("Updated from Playwright");
+  await page.locator('form:has(input[name="siteName"]):visible button[type="submit"]').click();
 
   await expect(page).toHaveURL(new RegExp(`${ADMIN_PATH}/settings\\?updated=site`));
   await page.goto("/");
@@ -308,10 +313,10 @@ test("lets an administrator update public site settings", async ({ page }) => {
 
 async function login(page: Page) {
   await page.goto(`${ADMIN_PATH}/login`);
-  await page.locator('input[name="email"]').fill(TEST_ADMIN.email);
-  await page.locator('input[name="password"]').fill(TEST_ADMIN.password);
-  await page.locator('button[type="submit"]').click();
-  await expect(page.getByText(TEST_ADMIN.email)).toBeVisible();
+  await page.locator('input[name="email"]:visible').fill(TEST_ADMIN.email);
+  await page.locator('input[name="password"]:visible').fill(TEST_ADMIN.password);
+  await page.locator('button[type="submit"]:visible').click();
+  await expect(page.locator(".admin-owner-card p:visible")).toHaveText(TEST_ADMIN.email);
 }
 
 async function expectInteractiveGlyphDrag(page: Page, sourceHash: string) {

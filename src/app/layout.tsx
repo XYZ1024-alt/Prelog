@@ -1,42 +1,40 @@
 import type { Metadata } from "next";
-import { Suspense } from "react";
+import Script from "next/script";
 
-import { AnalyticsTracker } from "@/components/analytics-tracker";
 import { ThemeProvider } from "@/components/theme-provider";
-import { SiteFooter, SiteHeader } from "@/components/site-shell";
-import { getSiteSettings } from "@/lib/site-settings";
-import { createPageMetadataAlternates, getSiteUrl } from "@/lib/site-url";
+import { getSiteUrl } from "@/lib/site-url";
 import "./globals.css";
 
-// CI and self-hosted builds intentionally run without a live database.
-export const dynamic = "force-dynamic";
+const THEME_INITIALIZER = `(() => {
+  try {
+    const stored = localStorage.getItem("prelog-theme");
+    const theme = stored === "light" || stored === "dark"
+      ? stored
+      : matchMedia("(prefers-color-scheme: light)").matches ? "light" : "dark";
+    document.documentElement.dataset.theme = theme;
+  } catch (error) {
+    console.warn("Unable to read the saved Prelog theme.", error);
+    document.documentElement.dataset.theme = matchMedia("(prefers-color-scheme: light)").matches ? "light" : "dark";
+  }
+})();`;
 
-export async function generateMetadata(): Promise<Metadata> {
-  const settings = await getSiteSettings();
+export const metadata: Metadata = {
+  metadataBase: getSiteUrl(),
+  title: "Prelog",
+};
 
-  return {
-    alternates: createPageMetadataAlternates("/"),
-    metadataBase: getSiteUrl(),
-    title: {
-      default: settings.siteName,
-      template: `%s | ${settings.siteName}`,
-    },
-    description: settings.siteTagline,
-  };
-}
-
-export default async function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
+export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   return (
-    <html lang="zh-CN" suppressHydrationWarning>
+    <html data-scroll-behavior="smooth" lang="zh-CN" suppressHydrationWarning>
+      <head>
+        <Script
+          dangerouslySetInnerHTML={{ __html: THEME_INITIALIZER }}
+          id="prelog-theme-initializer"
+          strategy="beforeInteractive"
+        />
+      </head>
       <body>
-        <ThemeProvider>
-          <SiteHeader />
-          <Suspense fallback={null}>
-            <AnalyticsTracker />
-          </Suspense>
-          {children}
-          <SiteFooter />
-        </ThemeProvider>
+        <ThemeProvider>{children}</ThemeProvider>
       </body>
     </html>
   );

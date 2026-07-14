@@ -1,5 +1,6 @@
 import { layout, prepare } from "@chenglou/pretext";
 
+import { SYSTEM_MONO_FONT_STACK, SYSTEM_SANS_FONT_STACK } from "@/lib/font-stack";
 import { estimateReadingMinutes, plainTextFromMarkdown } from "@/lib/text";
 
 export type EditorialInput = {
@@ -25,9 +26,9 @@ export type EditorialReport = {
   readonly titleLines: number;
 };
 
-const TITLE_FONT = '700 28px "Inter", "Noto Sans SC", Arial';
-const EXCERPT_FONT = '16px "Inter", "Noto Sans SC", Arial';
-const BODY_FONT = '16px "SFMono-Regular", Consolas, monospace';
+const TITLE_FONT = `700 28px ${SYSTEM_SANS_FONT_STACK}`;
+const EXCERPT_FONT = `16px ${SYSTEM_SANS_FONT_STACK}`;
+const BODY_FONT = `16px ${SYSTEM_MONO_FONT_STACK}`;
 const TITLE_LINE_HEIGHT = 34;
 const EXCERPT_LINE_HEIGHT = 26;
 const BODY_LINE_HEIGHT = 26;

@@ -1,6 +1,8 @@
+import { Check, Eye, EyeOff, ShieldAlert, Trash2 } from "lucide-react";
 import Link from "next/link";
 
-import { AdminNav } from "@/app/admin/admin-nav";
+import { AdminPageHeader } from "@/app/admin/admin-page-header";
+import { AdminShell } from "@/app/admin/admin-shell";
 import { approveComment, deleteComment, hideComment, markCommentSpam } from "@/app/admin/comments/actions";
 import { SubmitButton } from "@/components/submit-button";
 import type { CommentStatus } from "@/generated/prisma/client";
@@ -41,24 +43,24 @@ export default async function AdminCommentsPage({ searchParams }: AdminCommentsP
   const counts = getStatusCounts(comments);
 
   return (
-    <main className="admin-shell">
-      <AdminNav />
-      <section className="admin-panel">
-        <div className="admin-panel__head">
-          <div>
-            <span className="eyebrow">Comments</span>
-            <h1>评论审核</h1>
-          </div>
+    <AdminShell>
+      <AdminPageHeader
+        actions={(
           <div className="admin-comment-stats">
             <span>待审核 {counts.PENDING}</span>
             <span>已通过 {counts.APPROVED}</span>
             <span>隐藏 {counts.HIDDEN}</span>
             <span>垃圾 {counts.SPAM}</span>
           </div>
-        </div>
-        <form className="admin-filters">
-          <input defaultValue={query} name="q" placeholder="搜索作者、邮箱、评论或文章标题" type="search" />
-          <select defaultValue={status} name="status">
+        )}
+        label="内容管理"
+        title="评论审核"
+      />
+      <form className="admin-filters">
+          <label className="sr-only" htmlFor="admin-comment-search">搜索评论</label>
+          <input defaultValue={query} id="admin-comment-search" name="q" placeholder="搜索作者、邮箱、评论或文章标题" type="search" />
+          <label className="sr-only" htmlFor="admin-comment-status">评论状态</label>
+          <select defaultValue={status} id="admin-comment-status" name="status">
             <option value="ALL">全部状态</option>
             <option value="PENDING">待审核</option>
             <option value="APPROVED">已通过</option>
@@ -68,9 +70,9 @@ export default async function AdminCommentsPage({ searchParams }: AdminCommentsP
           <SubmitButton className="button button--ghost" pendingChildren="筛选中...">
             筛选
           </SubmitButton>
-        </form>
+      </form>
 
-        <div className="admin-table">
+      <div className="admin-table">
           {comments.map((comment) => (
             <article className="admin-row admin-row--comment" key={comment.id}>
               <div>
@@ -87,14 +89,16 @@ export default async function AdminCommentsPage({ searchParams }: AdminCommentsP
               </div>
               <div className="admin-row__actions">
                 <Link className="button button--ghost" href={`/posts/${comment.post.slug}`}>
+                  <Eye aria-hidden="true" size={15} />
                   查看
                 </Link>
-                <StatusAction action={approveComment} hidden={comment.status === "APPROVED"} id={comment.id} label="通过" />
-                <StatusAction action={hideComment} hidden={comment.status === "HIDDEN"} id={comment.id} label="隐藏" />
-                <StatusAction action={markCommentSpam} hidden={comment.status === "SPAM"} id={comment.id} label="垃圾" />
+                <StatusAction action={approveComment} hidden={comment.status === "APPROVED"} icon={Check} id={comment.id} label="通过" />
+                <StatusAction action={hideComment} hidden={comment.status === "HIDDEN"} icon={EyeOff} id={comment.id} label="隐藏" />
+                <StatusAction action={markCommentSpam} hidden={comment.status === "SPAM"} icon={ShieldAlert} id={comment.id} label="垃圾" />
                 <form action={deleteComment}>
                   <input name="id" type="hidden" value={comment.id} />
                   <SubmitButton className="button button--danger" pendingChildren="删除中...">
+                    <Trash2 aria-hidden="true" size={15} />
                     删除
                   </SubmitButton>
                 </form>
@@ -102,20 +106,21 @@ export default async function AdminCommentsPage({ searchParams }: AdminCommentsP
             </article>
           ))}
           {comments.length === 0 ? <p className="empty-state">没有匹配评论，换个关键词或状态试试。</p> : null}
-        </div>
-      </section>
-    </main>
+      </div>
+    </AdminShell>
   );
 }
 
 function StatusAction({
   action,
   hidden,
+  icon: Icon,
   id,
   label,
 }: {
   readonly action: (formData: FormData) => Promise<void>;
   readonly hidden: boolean;
+  readonly icon: typeof Check;
   readonly id: string;
   readonly label: string;
 }) {
@@ -127,6 +132,7 @@ function StatusAction({
     <form action={action}>
       <input name="id" type="hidden" value={id} />
       <SubmitButton className="button button--ghost" pendingChildren="处理中...">
+        <Icon aria-hidden="true" size={15} />
         {label}
       </SubmitButton>
     </form>

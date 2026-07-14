@@ -5,7 +5,6 @@ import { CalendarDays, MessageCircle, Timer } from "lucide-react";
 
 import { ArticleGlyph } from "@/components/article-glyph";
 import { PretextFitTitle } from "@/components/pretext-fit-title";
-import { getGlyphRecipeInitial } from "@/lib/glyph-recipe";
 import { resolvePostCover } from "@/lib/post-cover";
 
 type PostWithMeta = {
@@ -43,15 +42,7 @@ export function PostCard({ post }: { readonly post: PostWithMeta }) {
           />
         ) : (
           <span className="post-card-cover">
-            <span className="post-card-cover__grid" />
-            <span className="post-card-cover__topline">
-              <span>{post.category?.name ?? "未分类"}</span>
-              <span>Initial / {getGlyphRecipeInitial(cover.recipe) ?? "Legacy"}</span>
-            </span>
             <ArticleGlyph className="post-card-cover__glyph" preset="thumbnail" recipe={cover.recipe} />
-            <span className="post-card-cover__keywords">
-              Sections {padCount(cover.recipe.legend.sections)} / Code {padCount(cover.recipe.legend.codeBlocks)}
-            </span>
           </span>
         )}
       </Link>
@@ -85,8 +76,4 @@ export function PostCard({ post }: { readonly post: PostWithMeta }) {
       </div>
     </article>
   );
-}
-
-function padCount(value: number) {
-  return String(value).padStart(2, "0");
 }

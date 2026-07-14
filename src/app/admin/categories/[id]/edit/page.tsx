@@ -1,6 +1,7 @@
 import { notFound } from "next/navigation";
 
-import { AdminNav } from "@/app/admin/admin-nav";
+import { AdminPageHeader } from "@/app/admin/admin-page-header";
+import { AdminShell } from "@/app/admin/admin-shell";
 import { CategoryEditor } from "@/app/admin/categories/category-editor";
 import { updateCategory } from "@/app/admin/categories/actions";
 import { prisma } from "@/lib/prisma";
@@ -22,13 +23,9 @@ export default async function EditCategoryPage({ params }: PageProps) {
   }
 
   return (
-    <main className="admin-shell">
-      <AdminNav />
-      <section className="admin-panel">
-        <span className="eyebrow">Edit Category</span>
-        <h1>编辑分类</h1>
-        <CategoryEditor action={updateCategory} category={category} />
-      </section>
-    </main>
+    <AdminShell>
+      <AdminPageHeader label="内容组织" title="编辑分类" />
+      <CategoryEditor action={updateCategory} category={category} />
+    </AdminShell>
   );
 }

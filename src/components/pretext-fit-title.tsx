@@ -4,15 +4,17 @@ import Link from "next/link";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { layout, prepare } from "@chenglou/pretext";
 
+import { SYSTEM_SANS_FONT_STACK } from "@/lib/font-stack";
+
 type PretextFitTitleProps = {
   readonly href: string;
   readonly title: string;
 };
 
-const TITLE_FONT = '800 22px "Inter", "Noto Sans SC", "Microsoft YaHei", Arial';
-const COMPACT_TITLE_FONT = '800 20px "Inter", "Noto Sans SC", "Microsoft YaHei", Arial';
-const LINE_HEIGHT = 26;
-const COMPACT_LINE_HEIGHT = 24;
+const TITLE_FONT = `800 26px ${SYSTEM_SANS_FONT_STACK}`;
+const COMPACT_TITLE_FONT = `800 24px ${SYSTEM_SANS_FONT_STACK}`;
+const LINE_HEIGHT = 31;
+const COMPACT_LINE_HEIGHT = 29;
 const MIN_WIDTH = 180;
 const COMPACT_LINE_THRESHOLD = 2;
 const DENSE_LINE_THRESHOLD = 3;

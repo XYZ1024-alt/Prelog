@@ -79,7 +79,7 @@ export function PostCoverEditor(props: PostCoverEditorProps) {
     <section className="post-cover-editor">
       <header className="post-cover-editor__header">
         <div>
-          <span className="eyebrow">Cover System</span>
+          <span className="eyebrow">封面系统</span>
           <h2>文章封面</h2>
         </div>
         <CoverModeControl

@@ -14,19 +14,47 @@ const PASSWORD_MIN = 8;
 const PATH_MAX = 2048;
 const REFERRER_MAX = 2048;
 const TEXTAREA_MAX = 2000;
+const FRIEND_LINK_SORT_MIN = -9999;
+const FRIEND_LINK_SORT_MAX = 9999;
 const HTTPS_PROTOCOL = "https:";
+const MAILTO_PROTOCOL = "mailto:";
 const HTTP_PROTOCOLS = new Set(["http:", HTTPS_PROTOCOL]);
 const ANALYTICS_PATH_PATTERN = /^\/(?!\/)[^?#\\\u0000-\u001f]*$/;
+const CONTACT_ROOT_PATH_PATTERN = /^\/(?!\/)[^\\\u0000-\u001f]*$/;
 const DATABASE_ID_PATTERN = /^[A-Za-z0-9_-]+$/;
 const NON_PUBLIC_ADDRESSES = createNonPublicAddressList();
 const MANUAL_COVER_HOSTS_SEPARATOR = ",";
 const PUBLIC_URL_ERROR = "封面图 URL 必须使用允许列表中的公开 HTTPS 主机。";
+const FRIEND_URL_ERROR = "请输入公开可访问的 HTTPS 地址。";
+const FRIEND_CONTACT_URL_ERROR = "联系地址必须是公开 HTTPS、mailto: 或站内根路径。";
 
 export const publicHttpsUrlSchema = z
   .string()
   .trim()
   .url()
   .refine(isAllowedManualCoverUrl, PUBLIC_URL_ERROR);
+
+export const publicFriendUrlSchema = z
+  .string()
+  .trim()
+  .min(REQUIRED_TEXT_MIN)
+  .max(PATH_MAX)
+  .url()
+  .refine(isPublicHttpsUrl, FRIEND_URL_ERROR)
+  .transform(normalizePublicHttpsUrl);
+
+const optionalPublicFriendUrlSchema = z.preprocess(
+  (value) => typeof value === "string" ? value.trim() : value,
+  z.union([z.literal(""), publicFriendUrlSchema]),
+).transform((value) => value || undefined);
+
+export const friendContactUrlSchema = z
+  .string()
+  .trim()
+  .min(REQUIRED_TEXT_MIN)
+  .max(PATH_MAX)
+  .refine(isAllowedFriendContactUrl, FRIEND_CONTACT_URL_ERROR)
+  .transform(normalizeFriendContactUrl);
 
 const optionalHttpsUrlSchema = publicHttpsUrlSchema
   .optional()
@@ -97,6 +125,23 @@ export const categoryFormSchema = z.object({
   description: z.string().trim().max(EXCERPT_MAX).optional(),
 });
 
+export const friendLinkFormSchema = z.object({
+  name: z.string().trim().min(REQUIRED_TEXT_MIN).max(TITLE_MAX),
+  url: publicFriendUrlSchema,
+  description: z.string().trim().min(REQUIRED_TEXT_MIN).max(EXCERPT_MAX),
+  logoUrl: optionalPublicFriendUrlSchema,
+  sortOrder: z.coerce.number().int().min(FRIEND_LINK_SORT_MIN).max(FRIEND_LINK_SORT_MAX),
+  isVisible: z.boolean(),
+});
+
+export const friendSettingsSchema = z.object({
+  friendsEnabled: z.boolean(),
+  friendsIntro: z.string().trim().min(REQUIRED_TEXT_MIN).max(TEXTAREA_MAX),
+  friendsRequirements: z.string().trim().max(TEXTAREA_MAX),
+  friendsContactLabel: z.string().trim().min(REQUIRED_TEXT_MIN).max(TITLE_MAX),
+  friendsContactUrl: friendContactUrlSchema,
+});
+
 export const commentSchema = z.object({
   postId: z.string().trim().min(REQUIRED_TEXT_MIN).max(DATABASE_ID_MAX).regex(DATABASE_ID_PATTERN),
   slug: z.string().trim().min(REQUIRED_TEXT_MIN).max(SLUG_MAX),
@@ -148,25 +193,56 @@ export const siteSettingsSchema = z.object({
 });
 
 export function isAllowedManualCoverUrl(value: string) {
+  const url = parsePublicHttpsUrl(value);
+
+  if (!url) {
+    return false;
+  }
+
+  return isAllowedManualCoverHostname(normalizeHostname(url.hostname));
+}
+
+export function isPublicHttpsUrl(value: string) {
+  return parsePublicHttpsUrl(value) !== null;
+}
+
+export function normalizePublicHttpsUrl(value: string) {
+  const url = new URL(value);
+  url.hostname = url.hostname.replace(/\.$/, "");
+  url.hash = "";
+  return url.toString();
+}
+
+export function isAllowedFriendContactUrl(value: string) {
+  if (CONTACT_ROOT_PATH_PATTERN.test(value)) {
+    return true;
+  }
+
+  if (isPublicHttpsUrl(value)) {
+    return true;
+  }
+
   try {
     const url = new URL(value);
-    const hostname = url.hostname.toLowerCase().replace(/^\[|\]$/g, "").replace(/\.$/, "");
 
-    if (
-      url.protocol !== HTTPS_PROTOCOL
-      || url.username
-      || url.password
-      || !isPublicHostname(hostname)
-      || !isAllowedManualCoverHostname(hostname)
-    ) {
+    if (url.protocol !== MAILTO_PROTOCOL || url.hash) {
       return false;
     }
 
-    const ipVersion = isIP(hostname);
-    return ipVersion === 0 || !NON_PUBLIC_ADDRESSES.check(hostname, ipVersion === 4 ? "ipv4" : "ipv6");
+    const decodedAddress = decodeURIComponent(url.pathname);
+    const decodedUrl = decodeURIComponent(`${url.pathname}${url.search}`);
+    return !/[\r\n]/.test(decodedUrl) && z.email().safeParse(decodedAddress).success;
   } catch {
     return false;
   }
+}
+
+export function normalizeFriendContactUrl(value: string) {
+  if (CONTACT_ROOT_PATH_PATTERN.test(value)) {
+    return value;
+  }
+
+  return isPublicHttpsUrl(value) ? normalizePublicHttpsUrl(value) : new URL(value).toString();
 }
 
 function isAllowedManualCoverHostname(hostname: string) {
@@ -198,6 +274,33 @@ function isPublicHostname(hostname: string) {
   }
 
   return isIP(hostname) > 0 || hostname.includes(".");
+}
+
+function parsePublicHttpsUrl(value: string) {
+  try {
+    const url = new URL(value);
+    const hostname = normalizeHostname(url.hostname);
+
+    if (
+      url.protocol !== HTTPS_PROTOCOL
+      || url.username
+      || url.password
+      || !isPublicHostname(hostname)
+    ) {
+      return null;
+    }
+
+    const ipVersion = isIP(hostname);
+    return ipVersion === 0 || !NON_PUBLIC_ADDRESSES.check(hostname, ipVersion === 4 ? "ipv4" : "ipv6")
+      ? url
+      : null;
+  } catch {
+    return null;
+  }
+}
+
+function normalizeHostname(hostname: string) {
+  return hostname.toLowerCase().replace(/^\[|\]$/g, "").replace(/\.$/, "");
 }
 
 function isOptionalHttpUrl(value: string) {

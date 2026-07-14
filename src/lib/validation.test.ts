@@ -1,9 +1,82 @@
 import { afterEach, describe, expect, test, vi } from "vitest";
 
-import { analyticsSchema, commentSchema, isAllowedManualCoverUrl, publicHttpsUrlSchema } from "./validation.ts";
+import {
+  analyticsSchema,
+  commentSchema,
+  friendContactUrlSchema,
+  friendLinkFormSchema,
+  isAllowedManualCoverUrl,
+  isPublicHttpsUrl,
+  publicFriendUrlSchema,
+  publicHttpsUrlSchema,
+} from "./validation.ts";
 
 afterEach(() => {
   vi.unstubAllEnvs();
+});
+
+describe("friend link validation", () => {
+  test("normalizes public HTTPS URLs without applying the cover host allowlist", () => {
+    vi.stubEnv("NODE_ENV", "production");
+    vi.stubEnv("MANUAL_COVER_HOSTS", "cdn.example.com");
+
+    expect(isPublicHttpsUrl("https://Friends.Example.com.:443/#directory")).toBe(true);
+    expect(publicFriendUrlSchema.parse("https://Friends.Example.com.:443/#directory"))
+      .toBe("https://friends.example.com/");
+  });
+
+  test.each([
+    "http://friends.example.com/",
+    "https://user:secret@friends.example.com/",
+    "https://localhost/",
+    "https://internal/",
+    "https://10.0.0.3/",
+    "https://[::1]/",
+  ])("rejects non-public friend URL %s", (value) => {
+    expect(publicFriendUrlSchema.safeParse(value).success).toBe(false);
+  });
+
+  test("validates the complete friend form and integer sort bounds", () => {
+    const result = friendLinkFormSchema.safeParse({
+      description: "Independent writing about the web.",
+      isVisible: true,
+      logoUrl: "",
+      name: "Example Notes",
+      sortOrder: "12",
+      url: "https://example.com",
+    });
+
+    expect(result.success).toBe(true);
+    expect(result.data).toMatchObject({ logoUrl: undefined, sortOrder: 12, url: "https://example.com/" });
+    expect(friendLinkFormSchema.safeParse({
+      description: "Description",
+      isVisible: true,
+      logoUrl: "",
+      name: "Example",
+      sortOrder: "10000",
+      url: "https://example.com",
+    }).success).toBe(false);
+  });
+});
+
+describe("friend contact URL validation", () => {
+  test.each([
+    ["/about", "/about"],
+    ["mailto:hello@example.com", "mailto:hello@example.com"],
+    ["https://contact.example.com#form", "https://contact.example.com/"],
+  ])("accepts and normalizes %s", (value, expected) => {
+    expect(friendContactUrlSchema.parse(value)).toBe(expected);
+  });
+
+  test.each([
+    "//example.com/contact",
+    "javascript:alert(1)",
+    "http://contact.example.com",
+    "mailto:not-an-email",
+    "mailto:hello@example.com?subject=%0AInjected",
+  ])("rejects unsafe contact URL %s", (value) => {
+    expect(friendContactUrlSchema.safeParse(value).success).toBe(false);
+  });
 });
 
 describe("public HTTPS URL validation", () => {

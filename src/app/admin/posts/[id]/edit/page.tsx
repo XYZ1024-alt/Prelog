@@ -1,6 +1,7 @@
 import { notFound } from "next/navigation";
 
-import { AdminNav } from "@/app/admin/admin-nav";
+import { AdminPageHeader } from "@/app/admin/admin-page-header";
+import { AdminShell } from "@/app/admin/admin-shell";
 import { updatePostWithState } from "@/app/admin/posts/actions";
 import { PostEditor } from "@/app/admin/posts/post-editor";
 import { PostWorkflowPanel } from "@/app/admin/posts/post-workflow-panel";
@@ -59,23 +60,19 @@ export default async function EditPostPage({ params }: PageProps) {
   });
 
   return (
-    <main className="admin-shell">
-      <AdminNav />
-      <section className="admin-panel">
-        <span className="eyebrow">Edit Post</span>
-        <h1>编辑文章</h1>
-        <PostEditor
-          action={updatePostWithState}
-          categories={categories}
-          manualCoverHosts={getConfiguredManualCoverHosts()}
-          post={post}
-        />
-        <PostWorkflowPanel
-          expectedUpdatedAt={post.updatedAt.toISOString()}
-          postId={post.id}
-          revisions={revisionSummaries}
-        />
-      </section>
-    </main>
+    <AdminShell>
+      <AdminPageHeader label="文章编辑" title="编辑文章" />
+      <PostEditor
+        action={updatePostWithState}
+        categories={categories}
+        manualCoverHosts={getConfiguredManualCoverHosts()}
+        post={post}
+      />
+      <PostWorkflowPanel
+        expectedUpdatedAt={post.updatedAt.toISOString()}
+        postId={post.id}
+        revisions={revisionSummaries}
+      />
+    </AdminShell>
   );
 }

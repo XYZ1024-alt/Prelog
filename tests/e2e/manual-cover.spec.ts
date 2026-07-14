@@ -51,7 +51,7 @@ test("keeps manual covers allowlisted and private across every public image surf
   await expectPublicCover(
     page,
     `/posts/${MANUAL_POST.slug}`,
-    ".article-hero__visual--manual img",
+    ".article-hero__visual-frame--manual img",
   );
 });
 

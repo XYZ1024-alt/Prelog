@@ -121,9 +121,18 @@ describe("privacy-preserving analytics", () => {
       query: "  Missing   Topic  ",
       type: "SEARCH_ZERO",
     }));
+    const friendsResponse = await analyticsPOST(createAnalyticsRequest({
+      path: "/friends",
+      type: "PAGE_VIEW",
+    }));
 
-    expect([pageResponse.status, repeatedPageResponse.status, depthResponse.status, searchResponse.status])
-      .toEqual([200, 200, 200, 200]);
+    expect([
+      pageResponse.status,
+      repeatedPageResponse.status,
+      depthResponse.status,
+      searchResponse.status,
+      friendsResponse.status,
+    ]).toEqual([200, 200, 200, 200, 200]);
     const metrics = await prisma.analyticsDailyMetric.findMany({
       orderBy: [{ type: "asc" }, { dimension: "asc" }],
       select: { count: true, dimension: true, path: true, type: true },
@@ -134,6 +143,7 @@ describe("privacy-preserving analytics", () => {
       { count: 2, dimension: "news.example", path: ANALYTICS_POST_PATH, type: "REFERRER" },
       { count: 1, dimension: "50", path: ANALYTICS_POST_PATH, type: "READ_DEPTH" },
       { count: 1, dimension: "missing topic", path: "/search", type: "SEARCH_ZERO" },
+      { count: 1, dimension: "", path: "/friends", type: "PAGE_VIEW" },
     ]));
   });
 

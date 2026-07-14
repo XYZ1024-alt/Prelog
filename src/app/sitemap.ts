@@ -1,6 +1,8 @@
 import type { MetadataRoute } from "next";
 
+import { getPublicFriendLinks } from "@/lib/friend-links";
 import { getPublishedPostSitemapEntries } from "@/lib/posts";
+import { getSiteSettings } from "@/lib/site-settings";
 import { createSiteUrl } from "@/lib/site-url";
 
 // Metadata routes do not inherit the runtime boundary from the root layout.
@@ -13,15 +15,27 @@ const STATIC_ROUTES = [
   { changeFrequency: "weekly", path: "/categories", priority: 0.6 },
   { changeFrequency: "weekly", path: "/tags", priority: 0.6 },
 ] as const;
+const FRIENDS_ROUTE = { changeFrequency: "monthly", path: "/friends", priority: 0.5 } as const;
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
-  const posts = await getPublishedPostSitemapEntries();
+  const [posts, settings] = await Promise.all([
+    getPublishedPostSitemapEntries(),
+    getSiteSettings(),
+  ]);
+  const friendLinks = settings.friendsEnabled ? await getPublicFriendLinks() : [];
   const latestPostUpdate = posts.reduce<Date | undefined>(
     (latest, post) => !latest || post.updatedAt > latest ? post.updatedAt : latest,
     undefined,
   );
+  const latestFriendUpdate = friendLinks.reduce<Date>(
+    (latest, friendLink) => friendLink.updatedAt > latest ? friendLink.updatedAt : latest,
+    settings.updatedAt,
+  );
   const categoryUpdates = new Map<string, Date>();
   const tagUpdates = new Map<string, Date>();
+  const staticRoutes = settings.friendsEnabled
+    ? [...STATIC_ROUTES, FRIENDS_ROUTE]
+    : STATIC_ROUTES;
 
   posts.forEach((post) => {
     if (post.category) {
@@ -31,9 +45,11 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   });
 
   return [
-    ...STATIC_ROUTES.map((route) => ({
+    ...staticRoutes.map((route) => ({
       changeFrequency: route.changeFrequency,
-      ...(latestPostUpdate ? { lastModified: latestPostUpdate } : {}),
+      ...(route.path === "/friends"
+        ? { lastModified: latestFriendUpdate }
+        : latestPostUpdate ? { lastModified: latestPostUpdate } : {}),
       priority: route.priority,
       url: createSiteUrl(route.path).toString(),
     })),

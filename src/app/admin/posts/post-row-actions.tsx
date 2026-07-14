@@ -2,6 +2,7 @@
 
 import { useActionState, type FormEvent } from "react";
 import Link from "next/link";
+import { Pencil, RotateCcw, Send, Trash2 } from "lucide-react";
 
 import {
   deletePostWithState,
@@ -25,7 +26,10 @@ export function PostRowActions({
 }) {
   return (
     <div className="admin-row__actions">
-      <Link className="button button--ghost" href={editHref}>编辑</Link>
+      <Link className="button button--ghost" href={editHref}>
+        <Pencil aria-hidden="true" size={15} />
+        编辑
+      </Link>
       <ToggleStatusForm id={id} status={status} updatedAt={updatedAt} />
       <DeletePostForm id={id} updatedAt={updatedAt} />
     </div>
@@ -44,6 +48,7 @@ function ToggleStatusForm({ id, status, updatedAt }: {
       <form action={action}>
         <PostIdentityFields id={id} updatedAt={updatedAt} />
         <SubmitButton className="button button--ghost" pendingChildren="处理中...">
+          {status === "PUBLISHED" ? <RotateCcw aria-hidden="true" size={15} /> : <Send aria-hidden="true" size={15} />}
           {status === "PUBLISHED" ? "撤回" : "发布"}
         </SubmitButton>
       </form>
@@ -59,7 +64,10 @@ function DeletePostForm({ id, updatedAt }: { readonly id: string; readonly updat
     <div>
       <form action={action} onSubmit={confirmPostDeletion}>
         <PostIdentityFields id={id} updatedAt={updatedAt} />
-        <SubmitButton className="button button--danger" pendingChildren="删除中...">删除</SubmitButton>
+        <SubmitButton className="button button--danger" pendingChildren="删除中...">
+          <Trash2 aria-hidden="true" size={15} />
+          删除
+        </SubmitButton>
       </form>
       <MutationError state={state} />
     </div>

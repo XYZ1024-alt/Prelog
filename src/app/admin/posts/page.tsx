@@ -2,7 +2,8 @@ import Link from "next/link";
 import { Plus } from "lucide-react";
 import type { PostStatus } from "@/generated/prisma/client";
 
-import { AdminNav } from "@/app/admin/admin-nav";
+import { AdminPageHeader } from "@/app/admin/admin-page-header";
+import { AdminShell } from "@/app/admin/admin-shell";
 import { PostRowActions } from "@/app/admin/posts/post-row-actions";
 import { SubmitButton } from "@/components/submit-button";
 import { toAdminPath } from "@/lib/admin-path";
@@ -32,23 +33,23 @@ export default async function AdminPostsPage({ searchParams }: AdminPostsPagePro
   });
 
   return (
-    <main className="admin-shell">
-      <AdminNav />
-      <section className="admin-panel">
-        <div className="admin-panel__head">
-          <div>
-            <span className="eyebrow">Posts</span>
-            <h1>文章管理</h1>
-          </div>
+    <AdminShell>
+      <AdminPageHeader
+        actions={(
           <Link className="button button--primary" href={toAdminPath("/posts/new")}>
             <Plus size={16} />
             新建文章
           </Link>
-        </div>
-        <form className="admin-filters">
-          <input defaultValue={query} name="q" placeholder="搜索标题、slug 或摘要" type="search" />
+        )}
+        label="内容管理"
+        title="文章管理"
+      />
+      <form className="admin-filters">
+          <label className="sr-only" htmlFor="admin-post-search">搜索文章</label>
+          <input defaultValue={query} id="admin-post-search" name="q" placeholder="搜索标题、slug 或摘要" type="search" />
           <input name="tag" type="hidden" value={tag} />
-          <select defaultValue={status} name="status">
+          <label className="sr-only" htmlFor="admin-post-status">文章状态</label>
+          <select defaultValue={status} id="admin-post-status" name="status">
             <option value="ALL">全部状态</option>
             <option value="PUBLISHED">已发布</option>
             <option value="DRAFT">草稿</option>
@@ -56,14 +57,14 @@ export default async function AdminPostsPage({ searchParams }: AdminPostsPagePro
           <SubmitButton className="button button--ghost" pendingChildren="筛选中...">
             筛选
           </SubmitButton>
-        </form>
-        {tag ? (
+      </form>
+      {tag ? (
           <p className="admin-row__note">
             当前按标签筛选：<strong>{tag}</strong>{" "}
             <Link href={toAdminPath("/posts")}>清除筛选</Link>
           </p>
-        ) : null}
-        <div className="admin-table">
+      ) : null}
+      <div className="admin-table">
           {posts.map((post) => (
             <article className="admin-row" key={post.id}>
               <div>
@@ -81,9 +82,8 @@ export default async function AdminPostsPage({ searchParams }: AdminPostsPagePro
             </article>
           ))}
           {posts.length === 0 ? <p className="empty-state">没有匹配文章，换个关键词或状态试试。</p> : null}
-        </div>
-      </section>
-    </main>
+      </div>
+    </AdminShell>
   );
 }
 

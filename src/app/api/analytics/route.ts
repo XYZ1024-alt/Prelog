@@ -56,7 +56,7 @@ class AnalyticsRateLimitError extends Error {
 
 const AUTOMATED_USER_AGENT_PATTERN = /bot|crawler|spider|headless|lighthouse|preview|facebookexternalhit|slurp/i;
 const PRIVATE_PATH_PREFIXES = Array.from(new Set([PUBLIC_ADMIN_PATH, "/admin", "/api", "/preview"]));
-const STATIC_PUBLIC_PATHS = new Set(["/", "/about", "/archive", "/categories", "/search", "/tags"]);
+const STATIC_PUBLIC_PATHS = new Set(["/", "/about", "/archive", "/categories", "/friends", "/search", "/tags"]);
 const DYNAMIC_PUBLIC_PATH_PATTERN = /^\/(posts|categories|tags)\/([^/]+)$/;
 const MAX_PUBLIC_SLUG_LENGTH = 140;
 const ANALYTICS_RETENTION_DAYS = 400;

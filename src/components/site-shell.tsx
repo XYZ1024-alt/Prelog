@@ -1,15 +1,9 @@
 import Link from "next/link";
 import { Archive, PenLine, Rss, Search } from "lucide-react";
 
+import { SiteNavigation } from "@/components/site-navigation";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { getSiteSettings } from "@/lib/site-settings";
-
-const NAV_ITEMS = [
-  { href: "/", label: "索引" },
-  { href: "/categories", label: "主题" },
-  { href: "/archive", label: "归档" },
-  { href: "/about", label: "关于" },
-] as const;
 
 export async function SiteHeader() {
   const settings = await getSiteSettings();
@@ -22,13 +16,7 @@ export async function SiteHeader() {
         </span>
         <span>{settings.siteName}</span>
       </Link>
-      <nav className="site-nav" aria-label="主导航">
-        {NAV_ITEMS.map((item) => (
-          <Link href={item.href} key={item.href}>
-            {item.label}
-          </Link>
-        ))}
-      </nav>
+      <SiteNavigation friendsEnabled={settings.friendsEnabled} />
       <div className="site-actions">
         <Link className="icon-button" href="/search" aria-label="搜索文章">
           <Search size={17} />

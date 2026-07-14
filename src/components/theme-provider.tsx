@@ -42,6 +42,12 @@ function getInitialTheme(): Theme {
     return "dark";
   }
 
+  const initialized = document.documentElement.dataset.theme;
+
+  if (initialized === "light" || initialized === "dark") {
+    return initialized;
+  }
+
   const stored = window.localStorage.getItem(STORAGE_KEY);
 
   if (stored === "light" || stored === "dark") {

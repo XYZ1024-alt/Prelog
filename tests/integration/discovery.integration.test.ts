@@ -4,6 +4,7 @@ import robots from "@/app/robots";
 import sitemap from "@/app/sitemap";
 import { GET as getRss } from "@/app/rss.xml/route";
 import { prisma } from "@/lib/prisma";
+import { DEFAULT_SITE_SETTINGS, SITE_SETTINGS_ID } from "@/lib/constants";
 import {
   getPublishedPostArchivePage,
   getPublishedPostBySlug,
@@ -133,6 +134,7 @@ describe("public content discovery", () => {
     expect(urls.some((url) => url.endsWith(`/posts/${TEST_POSTS.published.slug}`))).toBe(true);
     expect(urls.some((url) => url.endsWith(`/posts/${TEST_POSTS.draft.slug}`))).toBe(false);
     expect(urls.some((url) => url.endsWith("/categories/engineering"))).toBe(true);
+    expect(urls.some((url) => url.endsWith("/friends"))).toBe(true);
     expect(response.headers.get("cache-control")).toBe("public, max-age=0, must-revalidate");
     expect(response.headers.get("content-type")).toContain("application/rss+xml");
     expect(rss).toContain(TEST_POSTS.published.title);
@@ -142,6 +144,26 @@ describe("public content discovery", () => {
     expect(disallow).toContain("/preview");
     expect(allow).toContain("/api/og/");
     expect(disallow).not.toContain("/search");
+  });
+
+  test("removes the disabled friend page from sitemap without deleting links", async () => {
+    const beforeCount = await prisma.friendLink.count();
+    await prisma.siteSettings.upsert({
+      where: { id: SITE_SETTINGS_ID },
+      update: { friendsEnabled: false },
+      create: { id: SITE_SETTINGS_ID, ...DEFAULT_SITE_SETTINGS, friendsEnabled: false },
+    });
+
+    try {
+      const entries = await sitemap();
+      expect(entries.some((entry) => entry.url.endsWith("/friends"))).toBe(false);
+      expect(await prisma.friendLink.count()).toBe(beforeCount);
+    } finally {
+      await prisma.siteSettings.update({
+        where: { id: SITE_SETTINGS_ID },
+        data: { friendsEnabled: true },
+      });
+    }
   });
 });
 

@@ -14,7 +14,7 @@ export function SettingsForm({ action, defaults }: SettingsFormProps) {
       <div className="form-grid">
         <label>
           管理员名称
-          <input defaultValue={defaults.name ?? ""} name="name" placeholder="Prelog Admin" />
+          <input defaultValue={defaults.name ?? ""} name="name" placeholder="Prelog 管理员" />
         </label>
         <label>
           登录邮箱

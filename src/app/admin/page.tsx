@@ -1,7 +1,8 @@
 import Link from "next/link";
-import { BarChart3, FileText, MessageSquare, MousePointerClick, SearchX } from "lucide-react";
+import { BarChart3, FileText, MessageSquare, MousePointerClick, Plus, SearchX } from "lucide-react";
 
-import { AdminNav } from "@/app/admin/admin-nav";
+import { AdminPageHeader } from "@/app/admin/admin-page-header";
+import { AdminShell } from "@/app/admin/admin-shell";
 import { toAdminPath } from "@/lib/admin-path";
 import type { DashboardActivity } from "@/lib/admin-dashboard";
 import { getAdminDashboardData } from "@/lib/admin-dashboard";
@@ -17,44 +18,42 @@ export default async function AdminIndexPage() {
   const maxDailyVisits = Math.max(1, ...data.dailyVisits.map((item) => item.count));
 
   return (
-    <main className="admin-shell">
-      <AdminNav />
-      <section className="admin-panel">
-        <div className="admin-panel__head">
-          <div>
-            <span className="eyebrow">Dashboard</span>
-            <h1>后台概览</h1>
-          </div>
+    <AdminShell>
+      <AdminPageHeader
+        actions={(
           <Link className="button button--primary" href={toAdminPath("/posts/new")}>
+            <Plus aria-hidden="true" size={16} />
             新建文章
           </Link>
-        </div>
+        )}
+        label="内容管理"
+        title="后台概览"
+      />
 
-        <section className="admin-stats-grid" aria-label="关键数据">
+      <section className="admin-stats-grid" aria-label="关键数据">
           <StatCard icon={FileText} label="文章数" meta={`${data.postStats.published} 已发布 · ${data.postStats.draft} 草稿`} value={data.postStats.total} />
           <StatCard icon={MessageSquare} label="评论数" meta={`${data.commentStats.pending} 待审核 · ${data.commentStats.approved} 已通过 · ${data.commentStats.hidden} 隐藏`} value={data.commentStats.total} />
           <StatCard icon={MousePointerClick} label="今日访问" meta={`${data.visitStats.week} 最近 7 天`} value={data.visitStats.today} />
           <StatCard icon={BarChart3} label="累计访问" meta="前台页面访问记录" value={data.visitStats.total} />
-        </section>
-
-        <section className="admin-dashboard-grid">
-          <RecentActivities activities={data.recentActivities} />
-          <VisitPanel dailyVisits={data.dailyVisits} maxDailyVisits={maxDailyVisits} topPaths={data.topPaths} />
-        </section>
-        <ZeroResultQueries queries={data.zeroResultQueries} />
-        <section className="admin-card">
-          <div className="admin-card__head">
-            <h2>管理员资料</h2>
-            <span>后台登录信息</span>
-          </div>
-          <div className="admin-owner-card">
-            <strong>{user.name ?? "Prelog Admin"}</strong>
-            <p>{user.email}</p>
-            <span>可在设置页更新登录邮箱、显示名称和密码。</span>
-          </div>
-        </section>
       </section>
-    </main>
+
+      <section className="admin-dashboard-grid">
+        <RecentActivities activities={data.recentActivities} />
+        <VisitPanel dailyVisits={data.dailyVisits} maxDailyVisits={maxDailyVisits} topPaths={data.topPaths} />
+      </section>
+      <ZeroResultQueries queries={data.zeroResultQueries} />
+      <section className="admin-section">
+        <div className="admin-card__head">
+          <h2>管理员资料</h2>
+          <span>后台登录信息</span>
+        </div>
+        <div className="admin-owner-card">
+          <strong>{user.name ?? "Prelog 管理员"}</strong>
+          <p>{user.email}</p>
+          <span>可在设置页更新登录邮箱、显示名称和密码。</span>
+        </div>
+      </section>
+    </AdminShell>
   );
 }
 
@@ -64,11 +63,11 @@ function ZeroResultQueries({
   readonly queries: readonly { readonly count: number; readonly query: string }[];
 }) {
   return (
-    <section className="admin-card admin-search-gaps" aria-labelledby="search-gaps-title">
+    <section className="admin-section admin-search-gaps" aria-labelledby="search-gaps-title">
       <div className="admin-card__head">
         <div>
           <h2 id="search-gaps-title">搜索内容缺口</h2>
-          <span>没有返回结果的高频关键词 · Top 5</span>
+          <span>没有返回结果的高频关键词 · 前 5 项</span>
         </div>
         <SearchX aria-hidden="true" size={18} />
       </div>
@@ -116,7 +115,7 @@ function StatCard({ icon: Icon, label, meta, value }: StatCardProps) {
 
 function RecentActivities({ activities }: { readonly activities: readonly DashboardActivity[] }) {
   return (
-    <section className="admin-card">
+    <section className="admin-section">
       <div className="admin-card__head">
         <h2>最近动态</h2>
         <Link href={toAdminPath("/posts")}>查看文章</Link>
@@ -147,7 +146,7 @@ type VisitPanelProps = {
 
 function VisitPanel({ dailyVisits, maxDailyVisits, topPaths }: VisitPanelProps) {
   return (
-    <section className="admin-card">
+    <section className="admin-section">
       <div className="admin-card__head">
         <h2>访问数据统计</h2>
         <span>最近 7 天</span>

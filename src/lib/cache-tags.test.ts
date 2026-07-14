@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import {
   CATEGORIES_CACHE_TAG,
+  FRIEND_LINKS_CACHE_TAG,
   POSTS_CACHE_TAG,
   PUBLIC_CONTENT_CACHE_TAG,
   SITE_SETTINGS_CACHE_TAG,
@@ -9,6 +10,7 @@ import {
   createCategoryCacheTag,
   createCategoryMutationCacheTags,
   createCommentMutationCacheTags,
+  createFriendLinksMutationCacheTags,
   createPostCacheTag,
   createPostMutationCacheTags,
   createSiteSettingsMutationCacheTags,
@@ -56,6 +58,10 @@ describe("public content cache tags", () => {
     expect(createSiteSettingsMutationCacheTags()).toEqual([
       PUBLIC_CONTENT_CACHE_TAG,
       SITE_SETTINGS_CACHE_TAG,
+    ]);
+    expect(createFriendLinksMutationCacheTags()).toEqual([
+      PUBLIC_CONTENT_CACHE_TAG,
+      FRIEND_LINKS_CACHE_TAG,
     ]);
   });
 });

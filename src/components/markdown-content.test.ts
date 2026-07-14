@@ -49,7 +49,7 @@ describe("MarkdownContent", () => {
     expect(html).toContain('class="markdown-table-wrap"');
     expect(html.match(/class="code-block"/g)).toHaveLength(2);
     expect(html).toContain("<span>TypeScript</span>");
-    expect(html).toContain("<span>Code</span>");
+    expect(html).toContain("<span>代码</span>");
     expect(html).toContain("first line\n\nsecond line");
   });
 });
