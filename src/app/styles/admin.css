@@ -621,7 +621,7 @@
   min-width: 0;
 }
 
-.admin-row span {
+.admin-row > div:first-child > span {
   color: var(--text-subtle);
   display: block;
   font-size: 12px;
