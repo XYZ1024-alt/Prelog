@@ -63,6 +63,24 @@ test("supports the mobile admin navigation menu and restores focus on Escape", a
   await expect(toggle).toBeFocused();
 });
 
+test("keeps admin row action buttons aligned", async ({ page }) => {
+  await page.setViewportSize({ height: 900, width: 1280 });
+  await login(page);
+  await page.goto(`${ADMIN_PATH}/posts`);
+
+  const buttons = page.locator(".admin-row__actions").first().locator(".button");
+  await expect(buttons).toHaveCount(3);
+  const boxes = await buttons.evaluateAll((elements) => elements.map((element) => {
+    const { height, y } = element.getBoundingClientRect();
+    return { height, y };
+  }));
+  const heights = new Set(boxes.map(({ height }) => height));
+  const verticalOffsets = new Set(boxes.map(({ y }) => y));
+
+  expect(heights).toEqual(new Set([36]));
+  expect(verticalOffsets.size).toBe(1);
+});
+
 test("hides a single-heading table of contents and omits missing navigation items", async ({ page }) => {
   await page.goto(SINGLE_HEADING_ARTICLE_PATH);
 
