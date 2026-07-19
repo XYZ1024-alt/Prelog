@@ -23,16 +23,8 @@ const ANALYTICS_PATH_PATTERN = /^\/(?!\/)[^?#\\\u0000-\u001f]*$/;
 const CONTACT_ROOT_PATH_PATTERN = /^\/(?!\/)[^\\\u0000-\u001f]*$/;
 const DATABASE_ID_PATTERN = /^[A-Za-z0-9_-]+$/;
 const NON_PUBLIC_ADDRESSES = createNonPublicAddressList();
-const MANUAL_COVER_HOSTS_SEPARATOR = ",";
-const PUBLIC_URL_ERROR = "封面图 URL 必须使用允许列表中的公开 HTTPS 主机。";
 const FRIEND_URL_ERROR = "请输入公开可访问的 HTTPS 地址。";
 const FRIEND_CONTACT_URL_ERROR = "联系地址必须是公开 HTTPS、mailto: 或站内根路径。";
-
-export const publicHttpsUrlSchema = z
-  .string()
-  .trim()
-  .url()
-  .refine(isAllowedManualCoverUrl, PUBLIC_URL_ERROR);
 
 export const publicFriendUrlSchema = z
   .string()
@@ -55,10 +47,6 @@ export const friendContactUrlSchema = z
   .max(PATH_MAX)
   .refine(isAllowedFriendContactUrl, FRIEND_CONTACT_URL_ERROR)
   .transform(normalizeFriendContactUrl);
-
-const optionalHttpsUrlSchema = publicHttpsUrlSchema
-  .optional()
-  .or(z.literal(""));
 
 export const loginSchema = z.object({
   email: z.email(),
@@ -95,29 +83,17 @@ export const adminProfileSchema = z
     }
   });
 
-export const postFormSchema = z
-  .object({
-    title: z.string().trim().min(REQUIRED_TEXT_MIN).max(TITLE_MAX),
-    slug: z.string().trim().min(REQUIRED_TEXT_MIN).max(SLUG_MAX),
-    excerpt: z.string().trim().max(EXCERPT_MAX).optional(),
-    content: z.string().trim().min(REQUIRED_TEXT_MIN),
-    coverMode: z.enum(["GLYPH", "MANUAL"]),
-    coverImage: optionalHttpsUrlSchema,
-    categoryId: z.string().trim().optional().or(z.literal("")),
-    tagNames: z.string().trim().optional(),
-    seoTitle: z.string().trim().max(TITLE_MAX).optional(),
-    seoDescription: z.string().trim().max(EXCERPT_MAX).optional(),
-    status: z.enum(["DRAFT", "PUBLISHED"]),
-  })
-  .superRefine((value, context) => {
-    if (value.coverMode === "MANUAL" && !value.coverImage) {
-      context.addIssue({
-        code: "custom",
-        message: "人工封面模式必须提供 HTTPS 图片 URL。",
-        path: ["coverImage"],
-      });
-    }
-  });
+export const postFormSchema = z.object({
+  title: z.string().trim().min(REQUIRED_TEXT_MIN).max(TITLE_MAX),
+  slug: z.string().trim().min(REQUIRED_TEXT_MIN).max(SLUG_MAX),
+  excerpt: z.string().trim().max(EXCERPT_MAX).optional(),
+  content: z.string().trim().min(REQUIRED_TEXT_MIN),
+  categoryId: z.string().trim().optional().or(z.literal("")),
+  tagNames: z.string().trim().optional(),
+  seoTitle: z.string().trim().max(TITLE_MAX).optional(),
+  seoDescription: z.string().trim().max(EXCERPT_MAX).optional(),
+  status: z.enum(["DRAFT", "PUBLISHED"]),
+});
 
 export const categoryFormSchema = z.object({
   name: z.string().trim().min(REQUIRED_TEXT_MIN).max(TITLE_MAX),
@@ -192,16 +168,6 @@ export const siteSettingsSchema = z.object({
   footerSecondary: z.string().trim().min(REQUIRED_TEXT_MIN).max(TEXTAREA_MAX),
 });
 
-export function isAllowedManualCoverUrl(value: string) {
-  const url = parsePublicHttpsUrl(value);
-
-  if (!url) {
-    return false;
-  }
-
-  return isAllowedManualCoverHostname(normalizeHostname(url.hostname));
-}
-
 export function isPublicHttpsUrl(value: string) {
   return parsePublicHttpsUrl(value) !== null;
 }
@@ -243,23 +209,6 @@ export function normalizeFriendContactUrl(value: string) {
   }
 
   return isPublicHttpsUrl(value) ? normalizePublicHttpsUrl(value) : new URL(value).toString();
-}
-
-function isAllowedManualCoverHostname(hostname: string) {
-  const configuredHosts = getConfiguredManualCoverHosts();
-
-  if (configuredHosts.length === 0) {
-    return process.env.NODE_ENV !== "production";
-  }
-
-  return configuredHosts.includes(hostname);
-}
-
-export function getConfiguredManualCoverHosts() {
-  return (process.env.MANUAL_COVER_HOSTS ?? "")
-    .split(MANUAL_COVER_HOSTS_SEPARATOR)
-    .map((value) => value.trim().toLowerCase().replace(/\.$/, ""))
-    .filter(Boolean);
 }
 
 function isPublicHostname(hostname: string) {

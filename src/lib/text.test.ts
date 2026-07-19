@@ -3,7 +3,6 @@ import { describe, expect, test } from "vitest";
 import {
   createArticleDescription,
   createExcerpt,
-  createTitleInitial,
   estimateReadingMinutes,
   plainTextFromMarkdown,
   stripLeadingTitleHeading,
@@ -13,23 +12,6 @@ import {
 describe("text helpers", () => {
   test("creates lowercase pinyin slugs for Chinese titles", () => {
     expect(toSlug("你好 Next.js 16")).toBe("ni-hao-next-js-16");
-  });
-
-  test.each([
-    ["用 Prisma 管住边界", "Y"],
-    ["重庆博客", "C"],
-    ["重构系统", "C"],
-    ["重量级更新", "Z"],
-    ["🚀 École 2.0", "E"],
-    ["Ｃ＋＋ ２０２６", "C"],
-    ["2026 年度回顾", "2"],
-    ["🚀 / ++", "P"],
-  ])("creates the title Glyph initial for %s", (title, expected) => {
-    expect(createTitleInitial(title)).toBe(expected);
-  });
-
-  test("normalizes composed and decomposed title initials identically", () => {
-    expect(createTitleInitial("École")).toBe(createTitleInitial("E\u0301cole"));
   });
 
   test("removes markdown punctuation from plain text", () => {

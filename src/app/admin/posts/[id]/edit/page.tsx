@@ -8,7 +8,6 @@ import { PostWorkflowPanel } from "@/app/admin/posts/post-workflow-panel";
 import { postRevisionSnapshotSchema } from "@/lib/post-revisions";
 import { prisma } from "@/lib/prisma";
 import { requireAdmin } from "@/lib/session";
-import { getConfiguredManualCoverHosts } from "@/lib/validation";
 
 export const dynamic = "force-dynamic";
 
@@ -65,7 +64,6 @@ export default async function EditPostPage({ params }: PageProps) {
       <PostEditor
         action={updatePostWithState}
         categories={categories}
-        manualCoverHosts={getConfiguredManualCoverHosts()}
         post={post}
       />
       <PostWorkflowPanel

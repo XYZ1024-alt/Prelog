@@ -7,11 +7,6 @@ import { z } from "zod";
 
 import { toAdminPath } from "@/lib/admin-path";
 import { createPostMutationCacheTags } from "@/lib/cache-tags";
-import {
-  createArticleGlyphRecipe,
-  createArticleGlyphSignals,
-  glyphRecipeSchema,
-} from "@/lib/glyph-recipe";
 import { prisma } from "@/lib/prisma";
 import { createPostPreviewToken } from "@/lib/post-preview";
 import {
@@ -25,24 +20,16 @@ import {
 } from "@/lib/post-revisions";
 import { requireAdmin } from "@/lib/session";
 import { createExcerpt, estimateReadingMinutes, toSlug } from "@/lib/text";
-import { idSchema, isAllowedManualCoverUrl, postFormSchema } from "@/lib/validation";
+import { idSchema, postFormSchema } from "@/lib/validation";
 
 const TAG_SEPARATOR = ",";
 const PUBLISHED_STATUS = "PUBLISHED";
-const GLYPH_COVER_MODE = "GLYPH";
 const POST_REVISION_RETENTION_LIMIT = 50;
 const expectedUpdatedAtSchema = z.iso.datetime();
 
 type ParsedPostForm = ReturnType<typeof parsePostForm>;
 type CanonicalTag = { readonly id: string; readonly name: string; readonly slug: string };
 type CanonicalCategory = { readonly id: string; readonly name: string; readonly slug: string } | null;
-type ExistingCover = {
-  readonly coverMode: "GLYPH" | "MANUAL";
-  readonly glyphRecipe: Prisma.JsonValue | null;
-  readonly glyphSourceHash: string | null;
-  readonly publishedAt: Date | null;
-  readonly status: "DRAFT" | "PUBLISHED";
-};
 type RevalidationTarget = {
   readonly categorySlug: string | null;
   readonly slug: string;
@@ -61,11 +48,6 @@ export async function createPost(formData: FormData) {
         tags: { create: createTagConnections(tags) },
       },
     });
-    const glyphData = createGlyphDataForSave({ category, existing: null, parsed, postId: post.id, tags });
-
-    if (glyphData) {
-      await transaction.post.update({ where: { id: post.id }, data: glyphData });
-    }
 
     return {
       id: post.id,
@@ -90,15 +72,11 @@ export async function updatePost(formData: FormData) {
     assertPostVersion(existing.updatedAt, expectedUpdatedAt);
     const category = await getCanonicalCategory(transaction, parsed.categoryId);
     const tags = await upsertCanonicalTags(transaction, parsed.tagNames);
-    const glyphData = createGlyphDataForSave({ category, existing, parsed, postId: id, tags });
 
     await createRevision(transaction, id, existing, getSaveRevisionReason(existing.status, parsed.status));
     const update = await transaction.post.updateMany({
       where: { id, updatedAt: expectedUpdatedAt },
-      data: {
-        ...postData(parsed, existing.publishedAt),
-        ...glyphData,
-      },
+      data: postData(parsed, existing.publishedAt),
     });
     assertSinglePostWrite(update.count);
     await replacePostTags(transaction, id, tags);
@@ -143,14 +121,12 @@ export async function togglePostStatus(formData: FormData) {
     });
     assertPostVersion(post.updatedAt, expectedUpdatedAt);
     const status = post.status === PUBLISHED_STATUS ? "DRAFT" : PUBLISHED_STATUS;
-    const glyphData = createGlyphDataForToggle(post, status);
 
     await createRevision(transaction, post.id, post, status === PUBLISHED_STATUS ? "PUBLISH" : "SAVE");
 
     const update = await transaction.post.updateMany({
       where: { id, updatedAt: expectedUpdatedAt },
       data: {
-        ...glyphData,
         publishedAt: status === PUBLISHED_STATUS ? (post.publishedAt ?? new Date()) : post.publishedAt,
         status,
       },
@@ -172,75 +148,6 @@ export async function togglePostStatusWithState(
   formData: FormData,
 ): Promise<PostMutationState> {
   return runPostMutationWithState(() => togglePostStatus(formData));
-}
-
-export async function regeneratePostGlyphCover(formData: FormData) {
-  const result = await regeneratePostGlyphCoverMutation(formData);
-
-  redirect(toAdminPath(`/posts/${result.id}/edit?cover=regenerated`));
-}
-
-async function regeneratePostGlyphCoverMutation(formData: FormData) {
-  await requireAdmin();
-  const id = idSchema.parse({ id: formData.get("id") }).id;
-  const expectedUpdatedAt = parseExpectedUpdatedAt(formData);
-  const result = await prisma.$transaction(async (transaction) => {
-    const post = await transaction.post.findUniqueOrThrow({
-      where: { id },
-      include: { category: true, tags: { include: { tag: true } } },
-    });
-    assertPostVersion(post.updatedAt, expectedUpdatedAt);
-
-    if (post.status !== PUBLISHED_STATUS) {
-      throw new Error("Publish the post before locking a regenerated Glyph cover.");
-    }
-
-    const tags = post.tags.map(({ tag }) => tag);
-    const glyphData = createGlyphData({
-      category: post.category,
-      content: post.content,
-      postId: post.id,
-      tags,
-      title: post.title,
-    });
-
-    await createRevision(transaction, post.id, post, "SAVE");
-
-    const update = await transaction.post.updateMany({
-      where: {
-        coverMode: post.coverMode,
-        glyphGeneratedAt: post.glyphGeneratedAt,
-        glyphSourceHash: post.glyphSourceHash,
-        id,
-        status: PUBLISHED_STATUS,
-        updatedAt: expectedUpdatedAt,
-      },
-      data: {
-        ...glyphData,
-        ...(post.coverMode === "MANUAL" ? { updatedAt: expectedUpdatedAt } : {}),
-      },
-    });
-
-    assertSinglePostWrite(update.count);
-
-    return createRevalidationTarget({ category: post.category, slug: post.slug, tags });
-  });
-
-  revalidateContent([result]);
-  return { id };
-}
-
-export async function regeneratePostGlyphCoverWithState(
-  _previousState: PostMutationState,
-  formData: FormData,
-): Promise<PostMutationState> {
-  return runPostMutationWithState(
-    () => regeneratePostGlyphCoverMutation(formData),
-    ({ id }) => ({
-      href: toAdminPath(`/posts/${id}/edit?cover=regenerated`),
-      status: "success",
-    }),
-  );
 }
 
 export async function createPostPreviewLink(
@@ -375,8 +282,6 @@ function parsePostForm(formData: FormData) {
     slug: toSlug(rawSlug || title),
     excerpt: formData.get("excerpt"),
     content: formData.get("content"),
-    coverMode: formData.get("coverMode"),
-    coverImage: formData.get("coverImage"),
     categoryId: formData.get("categoryId"),
     tagNames: formData.get("tagNames"),
     seoTitle: formData.get("seoTitle"),
@@ -389,8 +294,6 @@ function postData(parsed: ParsedPostForm, existingPublishedAt: Date | null = nul
   return {
     categoryId: parsed.categoryId || null,
     content: parsed.content,
-    coverImage: parsed.coverImage || null,
-    coverMode: parsed.coverMode,
     excerpt: parsed.excerpt || createExcerpt(parsed.content, parsed.title),
     publishedAt: parsed.status === PUBLISHED_STATUS ? (existingPublishedAt ?? new Date()) : existingPublishedAt,
     readingMinutes: estimateReadingMinutes(parsed.content),
@@ -399,101 +302,6 @@ function postData(parsed: ParsedPostForm, existingPublishedAt: Date | null = nul
     slug: parsed.slug,
     status: parsed.status,
     title: parsed.title,
-  };
-}
-
-function createGlyphDataForSave(options: {
-  readonly category: CanonicalCategory;
-  readonly existing: ExistingCover | null;
-  readonly parsed: ParsedPostForm;
-  readonly postId: string;
-  readonly tags: readonly CanonicalTag[];
-}) {
-  const { existing, parsed } = options;
-
-  if (parsed.coverMode !== GLYPH_COVER_MODE || parsed.status !== PUBLISHED_STATUS) {
-    return undefined;
-  }
-
-  const existingRecipe = existing?.glyphRecipe ? glyphRecipeSchema.safeParse(existing.glyphRecipe) : null;
-  const hasMatchingRecipe = existingRecipe?.success && existing?.glyphSourceHash === existingRecipe.data.sourceHash;
-
-  if (hasMatchingRecipe) {
-    return undefined;
-  }
-
-  if (existing?.coverMode === GLYPH_COVER_MODE && existing.status === PUBLISHED_STATUS) {
-    throw new Error("Published GLYPH post has no valid locked recipe. Regenerate it explicitly.");
-  }
-
-  return createGlyphData({
-    category: options.category,
-    content: parsed.content,
-    postId: options.postId,
-    tags: options.tags,
-    title: parsed.title,
-  });
-}
-
-function createGlyphDataForToggle(post: {
-  readonly category: CanonicalCategory;
-  readonly content: string;
-  readonly coverImage: string | null;
-  readonly coverMode: "GLYPH" | "MANUAL";
-  readonly glyphRecipe: Prisma.JsonValue | null;
-  readonly glyphSourceHash: string | null;
-  readonly id: string;
-  readonly tags: readonly { readonly tag: CanonicalTag }[];
-  readonly title: string;
-}, status: "DRAFT" | "PUBLISHED") {
-  if (status !== PUBLISHED_STATUS) {
-    return undefined;
-  }
-
-  if (post.coverMode === "MANUAL") {
-    assertManualCover(post.coverImage);
-    return undefined;
-  }
-
-  const recipe = post.glyphRecipe ? glyphRecipeSchema.safeParse(post.glyphRecipe) : null;
-
-  if (recipe?.success && post.glyphSourceHash === recipe.data.sourceHash) {
-    return undefined;
-  }
-
-  return createGlyphData({
-    category: post.category,
-    content: post.content,
-    postId: post.id,
-    tags: post.tags.map(({ tag }) => tag),
-    title: post.title,
-  });
-}
-
-function createGlyphData(options: {
-  readonly category: CanonicalCategory;
-  readonly content: string;
-  readonly postId: string;
-  readonly tags: readonly CanonicalTag[];
-  readonly title: string;
-}) {
-  const signals = createArticleGlyphSignals(options.content);
-  const recipe = createArticleGlyphRecipe({
-    category: options.category?.slug ?? null,
-    labels: {
-      category: options.category?.name ?? null,
-      tags: options.tags.map((tag) => tag.name),
-    },
-    postId: options.postId,
-    signals,
-    tags: options.tags.map((tag) => tag.slug).sort(),
-    title: options.title,
-  });
-
-  return {
-    glyphGeneratedAt: new Date(),
-    glyphRecipe: recipe as unknown as Prisma.InputJsonValue,
-    glyphSourceHash: recipe.sourceHash,
   };
 }
 
@@ -625,12 +433,7 @@ function createRestoredPostData(options: {
   return {
     categoryId: category?.id ?? null,
     content: snapshot.content,
-    coverImage: snapshot.coverImage,
-    coverMode: snapshot.coverMode,
     excerpt: snapshot.excerpt,
-    glyphGeneratedAt: toOptionalDate(snapshot.glyphGeneratedAt),
-    glyphRecipe: snapshot.glyphRecipe === null ? Prisma.DbNull : snapshot.glyphRecipe,
-    glyphSourceHash: snapshot.glyphSourceHash,
     publishedAt: toOptionalDate(snapshot.publishedAt),
     readingMinutes: snapshot.readingMinutes,
     seoDescription: snapshot.seoDescription,
@@ -643,12 +446,6 @@ function createRestoredPostData(options: {
 
 function toOptionalDate(value: string | null) {
   return value ? new Date(value) : null;
-}
-
-function assertManualCover(coverImage: string | null) {
-  if (!coverImage || !isAllowedManualCoverUrl(coverImage)) {
-    throw new Error("Published MANUAL cover posts require an HTTPS cover image URL.");
-  }
 }
 
 function parseExpectedUpdatedAt(formData: FormData) {
