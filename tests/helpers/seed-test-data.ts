@@ -1,8 +1,7 @@
 import bcrypt from "bcryptjs";
 
-import { Prisma, type PrismaClient } from "../../src/generated/prisma/client.ts";
+import { type PrismaClient } from "../../src/generated/prisma/client.ts";
 import { ADMIN_USER_ID, SITE_SETTINGS_ID } from "../../src/lib/constants.ts";
-import { createArticleGlyphRecipe, createArticleGlyphSignals } from "../../src/lib/glyph-recipe.ts";
 
 export const TEST_ADMIN = {
   email: "admin@example.com",
@@ -160,7 +159,7 @@ async function createPublishedPost(
     readonly title: string;
   },
 ) {
-  const post = await prisma.post.create({
+  await prisma.post.create({
     data: {
       categoryId: options.categoryId,
       content: options.content,
@@ -171,27 +170,6 @@ async function createPublishedPost(
       status: "PUBLISHED",
       tags: { create: options.tags.map(({ id }) => ({ tag: { connect: { id } } })) },
       title: options.title,
-    },
-  });
-  const recipe = createArticleGlyphRecipe({
-    category: options.categorySlug,
-    labels: {
-      category: options.categoryName,
-      tags: options.tags.map((tag) => tag.name),
-    },
-    postId: post.id,
-    signals: createArticleGlyphSignals(options.content),
-    tags: options.tags.map((tag) => tag.slug).sort(),
-    title: options.title,
-  });
-
-  await prisma.post.update({
-    where: { id: post.id },
-    data: {
-      glyphGeneratedAt: new Date(),
-      glyphRecipe: recipe as unknown as Prisma.InputJsonValue,
-      glyphSourceHash: recipe.sourceHash,
-      updatedAt: post.updatedAt,
     },
   });
 }

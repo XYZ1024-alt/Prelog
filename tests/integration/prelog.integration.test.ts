@@ -10,7 +10,6 @@ import {
 } from "@/lib/posts";
 import { getSiteSettings } from "@/lib/site-settings";
 import { DEFAULT_SITE_SETTINGS, SITE_SETTINGS_ID } from "@/lib/constants";
-import { resolvePostCover } from "@/lib/post-cover";
 import { TEST_POSTS } from "../helpers/seed-test-data.ts";
 
 describe("site settings integration", () => {
@@ -32,7 +31,6 @@ describe("published post integration", () => {
 
     expect(posts.map((post) => post.slug)).toEqual([TEST_POSTS.search.slug, TEST_POSTS.published.slug]);
     expect(posts.some((post) => post.slug === TEST_POSTS.draft.slug)).toBe(false);
-    expect(posts.map((post) => resolvePostCover(post).mode)).toEqual(["GLYPH", "GLYPH"]);
   });
 
   test("loads a published post with approved comments only", async () => {

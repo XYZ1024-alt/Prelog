@@ -1,15 +1,12 @@
 import type { Metadata } from "next";
-import Image from "next/image";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ArrowLeft, ArrowRight, Hash, Search, Shapes, Sparkles } from "lucide-react";
 
-import { ArticleGlyph } from "@/components/article-glyph";
 import { PageHeading } from "@/components/page-heading";
 import { PageShell } from "@/components/page-shell";
 import { SubmitButton } from "@/components/submit-button";
 import { PUBLIC_SEARCH_QUERY_MAX } from "@/lib/constants";
-import { resolvePostCover } from "@/lib/post-cover";
 import { getCategoriesWithCounts, getTagsWithCounts, searchPublishedPostsPage } from "@/lib/posts";
 import { createPageMetadataAlternates } from "@/lib/site-url";
 import { publicSearchQuerySchema } from "@/lib/validation";
@@ -174,25 +171,9 @@ function SearchResults({ posts, query }: { readonly posts: readonly SearchResult
 function SearchResultCard({ post, query }: { readonly post: SearchResultPost; readonly query: string }) {
   const publishedAt = post.publishedAt?.toLocaleDateString("zh-CN") ?? "未发布";
   const tokens = query.split(/\s+/).filter(Boolean);
-  const cover = resolvePostCover(post);
 
   return (
     <article className="search-result-card">
-      <Link aria-label={`阅读 ${post.title}`} className="search-result-card__cover" href={`/posts/${post.slug}`}>
-        {cover.mode === "MANUAL" ? (
-          <Image
-            alt=""
-            className="search-result-card__image"
-            fill
-            referrerPolicy="no-referrer"
-            sizes="(max-width: 760px) 100vw, 150px"
-            src={cover.imageUrl}
-            unoptimized
-          />
-        ) : (
-          <ArticleGlyph preset="thumbnail" recipe={cover.recipe} />
-        )}
-      </Link>
       <div className="search-result-card__copy">
         <div className="search-result-card__meta">
           {post.category ? <Link href={`/categories/${post.category.slug}`}>{post.category.name}</Link> : <span>未分类</span>}

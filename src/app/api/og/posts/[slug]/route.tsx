@@ -1,9 +1,6 @@
 import { ImageResponse } from "next/og";
 
-import { getGlyphRecipeInitial, renderGlyphRecipe, type GlyphRecipe } from "@/lib/glyph-recipe";
-import { resolvePostCover } from "@/lib/post-cover";
 import { getPublishedPostBySlug } from "@/lib/posts";
-import { createPostOgImageUrl } from "@/lib/site-url";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -20,7 +17,7 @@ type RouteContext = {
   readonly params: Promise<{ slug: string }>;
 };
 
-export async function GET(request: Request, { params }: RouteContext) {
+export async function GET(_request: Request, { params }: RouteContext) {
   const { slug } = await params;
   const post = await getPublishedPostBySlug(slug);
 
@@ -28,102 +25,60 @@ export async function GET(request: Request, { params }: RouteContext) {
     return new Response(null, { status: 404 });
   }
 
-  const cover = resolvePostCover(post);
-
-  if (cover.mode === "MANUAL") {
-    return Response.redirect(cover.imageUrl, 307);
-  }
-
-  const requestedVersion = new URL(request.url).searchParams.get("v");
-
-  if (requestedVersion !== cover.sourceHash) {
-    return Response.redirect(createPostOgImageUrl({ slug: post.slug, sourceHash: cover.sourceHash }), 307);
-  }
-
+  const tags = post.tags.map(({ tag }) => tag.name).slice(0, MAX_TAGS);
   const response = new ImageResponse(
     (
       <div
         lang="zh-CN"
         style={{
-          background: "#f7f7f5",
-          color: "#17181a",
+          background: "#ffffff",
+          color: "#18181b",
           display: "flex",
           height: "100%",
-          padding: "54px 58px",
+          padding: "64px 72px",
           position: "relative",
           width: "100%",
         }}
       >
         <div
           style={{
-            border: "1px solid rgba(16,17,18,0.16)",
-            bottom: 28,
+            border: "1px solid rgba(24,24,27,0.12)",
+            bottom: 32,
             display: "flex",
-            left: 28,
+            left: 32,
             position: "absolute",
-            right: 28,
-            top: 28,
+            right: 32,
+            top: 32,
           }}
         />
-        <div
-          style={{
-            borderLeft: "1px solid rgba(16,17,18,0.12)",
-            bottom: 28,
-            display: "flex",
-            left: "64%",
-            position: "absolute",
-            top: 28,
-          }}
-        />
-        <div style={{ display: "flex", flexDirection: "column", justifyContent: "space-between", width: "59%" }}>
-          <div style={{ color: "#2457ff", display: "flex", fontSize: 18, fontWeight: 700, textTransform: "uppercase" }}>
-            {cover.recipe.labels.category ?? UNCATEGORIZED_LABEL} / 写作记录
+        <div style={{ display: "flex", flexDirection: "column", justifyContent: "space-between", width: "100%" }}>
+          <div style={{ color: "#1d4ed8", display: "flex", fontSize: 19, fontWeight: 700, letterSpacing: 2, textTransform: "uppercase" }}>
+            {post.category?.name ?? UNCATEGORIZED_LABEL}
           </div>
-          <div style={{ display: "flex", flexDirection: "column", gap: 26 }}>
+          <div style={{ display: "flex", flexDirection: "column", gap: 28 }}>
             <div
               style={{
                 display: "flex",
-                fontSize: getTitleSize(cover.recipe.labels.title),
+                fontSize: getTitleSize(post.title),
                 fontWeight: 800,
-                lineHeight: 1.05,
-                maxWidth: 650,
+                letterSpacing: -1,
+                lineHeight: 1.08,
+                maxWidth: 920,
                 wordBreak: "break-all",
               }}
             >
-              {truncateTitle(cover.recipe.labels.title)}
+              {truncateTitle(post.title)}
             </div>
-            <div style={{ color: "#6a7079", display: "flex", fontSize: 19, gap: 18 }}>
-              {cover.recipe.labels.tags.slice(0, MAX_TAGS).map((tag) => (
-                <span key={tag}>#{tag}</span>
-              ))}
-            </div>
+            {tags.length > 0 ? (
+              <div style={{ color: "#71717a", display: "flex", fontSize: 20, gap: 18 }}>
+                {tags.map((tag) => (
+                  <span key={tag}>#{tag}</span>
+                ))}
+              </div>
+            ) : null}
           </div>
-          <div style={{ color: "#6a7079", display: "flex", fontSize: 16, gap: 18, textTransform: "uppercase" }}>
-            <span>{OG_BRAND}</span>
-            <span>{formatLegend(cover.recipe)}</span>
-          </div>
-        </div>
-        <div
-          style={{
-            alignItems: "center",
-            color: "#527200",
-            display: "flex",
-            justifyContent: "center",
-            overflow: "hidden",
-            paddingLeft: 24,
-            width: "41%",
-          }}
-        >
-          <div
-            style={{
-              display: "flex",
-              fontFamily: "monospace",
-              fontSize: 10,
-              lineHeight: 1,
-              whiteSpace: "pre",
-            }}
-          >
-            {renderGlyphRecipe(cover.recipe, "social")}
+          <div style={{ color: "#71717a", display: "flex", fontSize: 17, fontWeight: 700, letterSpacing: 3, textTransform: "uppercase" }}>
+            {OG_BRAND}
           </div>
         </div>
       </div>
@@ -145,17 +100,12 @@ function getTitleSize(title: string) {
   const length = Array.from(title).length;
 
   if (length > 38) {
-    return 42;
+    return 46;
   }
 
   if (length > 24) {
-    return 50;
+    return 56;
   }
 
-  return 60;
-}
-
-function formatLegend(recipe: GlyphRecipe) {
-  const initial = getGlyphRecipeInitial(recipe) ?? "旧版";
-  return `首字 ${initial} / 章节 ${recipe.legend.sections} / 代码 ${recipe.legend.codeBlocks}`;
+  return 68;
 }

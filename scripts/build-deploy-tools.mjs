@@ -6,7 +6,7 @@ import { spawnSync } from "node:child_process";
 
 import { build } from "esbuild";
 
-const outputPath = resolve(".next/deploy-tools/backfill-glyph-recipes.mjs");
+const outputPath = resolve(".next/deploy-tools/maintenance.mjs");
 const nodeBuiltinModules = new Set(
   builtinModules.flatMap((moduleName) => [moduleName, `node:${moduleName}`]),
 );
@@ -15,7 +15,7 @@ const result = await build({
     js: "import { createRequire as __prelogCreateRequire } from 'node:module'; const require = __prelogCreateRequire(import.meta.url);",
   },
   bundle: true,
-  entryPoints: ["scripts/backfill-glyph-recipes.ts"],
+  entryPoints: ["scripts/maintenance.ts"],
   format: "esm",
   legalComments: "none",
   logLevel: "info",

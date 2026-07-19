@@ -1,11 +1,5 @@
-import Image from "next/image";
 import Link from "next/link";
 import { CalendarDays, MessageCircle, Timer } from "lucide-react";
-
-import { ArticleGlyph } from "@/components/article-glyph";
-import { ArticleGlyphUpgrade } from "@/components/article-glyph-upgrade";
-import { getGlyphRecipeInitial, type GlyphRecipe } from "@/lib/glyph-recipe";
-import type { ResolvedPostCover } from "@/lib/post-cover";
 
 type ArticleTaxonomy = {
   readonly name: string;
@@ -15,7 +9,6 @@ type ArticleTaxonomy = {
 type ArticleHeroProps = {
   readonly category: ArticleTaxonomy | null;
   readonly commentCount: number;
-  readonly cover: ResolvedPostCover;
   readonly excerpt: string;
   readonly publishedAt: Date | null;
   readonly readingMinutes: number;
@@ -32,7 +25,6 @@ const DATE_FORMATTER = new Intl.DateTimeFormat("zh-CN", {
 export function ArticleHero({
   category,
   commentCount,
-  cover,
   excerpt,
   publishedAt,
   readingMinutes,
@@ -70,39 +62,6 @@ export function ArticleHero({
           ))}
         </div>
       </div>
-      <figure className="article-hero__visual">
-        <div className={`article-hero__visual-frame article-hero__visual-frame--${cover.mode.toLowerCase()}`}>
-          {cover.mode === "MANUAL" ? (
-            <Image
-              alt={title}
-              fill
-              preload
-              referrerPolicy="no-referrer"
-              sizes="(max-width: 760px) 100vw, 42vw"
-              src={cover.imageUrl}
-              unoptimized
-            />
-          ) : (
-            <>
-              <ArticleGlyph preset="feature" recipe={cover.recipe} />
-              <ArticleGlyphUpgrade recipe={cover.recipe} />
-            </>
-          )}
-        </div>
-        <figcaption>
-          <span>{cover.mode === "MANUAL" ? "封面 / 原图" : formatGlyphLegend(cover.recipe)}</span>
-          <span>{publishedAt ? DATE_FORMATTER.format(publishedAt) : "日期未注明"}</span>
-        </figcaption>
-      </figure>
     </header>
   );
-}
-
-function formatGlyphLegend(recipe: GlyphRecipe) {
-  const initial = getGlyphRecipeInitial(recipe) ?? "旧版";
-  return `首字 ${initial} / 章节 ${padCount(recipe.legend.sections)} / 代码 ${padCount(recipe.legend.codeBlocks)}`;
-}
-
-function padCount(value: number) {
-  return String(value).padStart(2, "0");
 }
