@@ -1,3 +1,5 @@
+import "dotenv/config";
+
 import { defineConfig, devices } from "@playwright/test";
 
 const E2E_PORT = 3100;
@@ -20,7 +22,6 @@ export default defineConfig({
       ADMIN_PATH: process.env.ADMIN_PATH ?? "/admin",
       AUTH_SECRET: process.env.AUTH_SECRET ?? "test-auth-secret-at-least-32-characters",
       DATABASE_URL: process.env.DATABASE_URL_TEST ?? "",
-      MANUAL_COVER_HOSTS: process.env.MANUAL_COVER_HOSTS ?? "example.com",
       NEXTAUTH_URL: BASE_URL,
       PRELOG_DISABLE_PUBLIC_CACHE: "true",
     },

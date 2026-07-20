@@ -26,12 +26,16 @@ test("supports the mobile navigation menu and restores focus on Escape", async (
 
 test("initializes and persists the selected theme", async ({ page }) => {
   await page.goto("/");
-  await expect(page.getByRole("button", { name: /切换到.+主题/ })).toBeVisible();
+  await expect(page.getByRole("button", { name: "主题：跟随系统主题，点击切换" })).toBeVisible();
   await page.evaluate(() => window.localStorage.setItem("prelog-theme", "dark"));
   await page.reload();
 
   await expect(page.locator("html")).toHaveAttribute("data-theme", "dark");
-  await page.getByRole("button", { name: "切换到浅色主题" }).click();
+  await page.getByRole("button", { name: "主题：深色主题，点击切换" }).click();
+  await expect.poll(() => page.locator("html").getAttribute("data-theme")).toBeNull();
+  await expect.poll(() => page.evaluate(() => window.localStorage.getItem("prelog-theme"))).toBeNull();
+
+  await page.getByRole("button", { name: "主题：跟随系统主题，点击切换" }).click();
   await expect(page.locator("html")).toHaveAttribute("data-theme", "light");
   await page.reload();
   await expect(page.locator("html")).toHaveAttribute("data-theme", "light");
@@ -100,6 +104,30 @@ test("updates article progress when the active section changes", async ({ page }
   await expect(progress).toHaveAttribute("aria-valuenow", "100");
 });
 
+test("centers the article heading region at target viewports", async ({ page }) => {
+  for (const width of [390, 1280]) {
+    await page.setViewportSize({ height: VIEWPORT_HEIGHT, width });
+    await page.goto(ARTICLE_PATH);
+
+    const layout = await page.evaluate(() => {
+      const shell = document.querySelector<HTMLElement>(".article-shell")?.getBoundingClientRect();
+      const copy = document.querySelector<HTMLElement>(".article-hero__copy")?.getBoundingClientRect();
+
+      if (!shell || !copy) {
+        throw new Error("Article heading layout targets are unavailable.");
+      }
+
+      return {
+        centerDelta: Math.abs((shell.left + shell.width / 2) - (copy.left + copy.width / 2)),
+        overflows: document.documentElement.scrollWidth > document.documentElement.clientWidth,
+      };
+    });
+
+    expect(layout.centerDelta).toBeLessThanOrEqual(0.5);
+    expect(layout.overflows).toBe(false);
+  }
+});
+
 test("exposes clipboard failures instead of reporting false success", async ({ page }) => {
   await page.addInitScript(() => {
     Object.defineProperty(navigator, "clipboard", {
@@ -130,7 +158,7 @@ test("keeps primary controls and secondary copy above WCAG AA contrast", async (
 
   for (const theme of ["dark", "light"] as const) {
     await setTheme(page, theme);
-    await expect.poll(() => getElementContrastRatio(page, ".glyph-hero__scene--static"))
+    await expect.poll(() => getElementContrastRatio(page, ".home-hero__description"))
       .toBeGreaterThanOrEqual(4.5);
   }
 });
