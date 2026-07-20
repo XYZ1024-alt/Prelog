@@ -5,8 +5,10 @@ import {
   commentSchema,
   friendContactUrlSchema,
   friendLinkFormSchema,
+  isAllowedManualCoverUrl,
   isPublicHttpsUrl,
   publicFriendUrlSchema,
+  publicHttpsUrlSchema,
 } from "./validation.ts";
 
 afterEach(() => {
@@ -14,8 +16,9 @@ afterEach(() => {
 });
 
 describe("friend link validation", () => {
-  test("normalizes public HTTPS URLs", () => {
+  test("normalizes public HTTPS URLs without applying the cover host allowlist", () => {
     vi.stubEnv("NODE_ENV", "production");
+    vi.stubEnv("MANUAL_COVER_HOSTS", "cdn.example.com");
 
     expect(isPublicHttpsUrl("https://Friends.Example.com.:443/#directory")).toBe(true);
     expect(publicFriendUrlSchema.parse("https://Friends.Example.com.:443/#directory"))
@@ -82,7 +85,8 @@ describe("public HTTPS URL validation", () => {
     "https://8.8.8.8/cover.webp",
     "https://images.example.cn:8443/path/cover.png",
   ])("accepts public HTTPS URL %s", (value) => {
-    expect(isPublicHttpsUrl(value)).toBe(true);
+    expect(isAllowedManualCoverUrl(value)).toBe(true);
+    expect(publicHttpsUrlSchema.safeParse(value).success).toBe(true);
   });
 
   test.each([
@@ -101,7 +105,23 @@ describe("public HTTPS URL validation", () => {
     "https://[fd00::1]/cover.webp",
     "https://[fe80::1]/cover.webp",
   ])("rejects non-public URL %s", (value) => {
-    expect(isPublicHttpsUrl(value)).toBe(false);
+    expect(isAllowedManualCoverUrl(value)).toBe(false);
+    expect(publicHttpsUrlSchema.safeParse(value).success).toBe(false);
+  });
+
+  test("requires an exact configured host in production", () => {
+    vi.stubEnv("NODE_ENV", "production");
+    vi.stubEnv("MANUAL_COVER_HOSTS", "cdn.example.com, images.example.cn");
+
+    expect(isAllowedManualCoverUrl("https://cdn.example.com/cover.webp")).toBe(true);
+    expect(isAllowedManualCoverUrl("https://other.example.com/cover.webp")).toBe(false);
+  });
+
+  test("rejects manual covers in production when no host allowlist is configured", () => {
+    vi.stubEnv("NODE_ENV", "production");
+    vi.stubEnv("MANUAL_COVER_HOSTS", "");
+
+    expect(isAllowedManualCoverUrl("https://cdn.example.com/cover.webp")).toBe(false);
   });
 });
 

@@ -1,3 +1,8 @@
+type PostOgImageUrlInput = {
+  readonly sourceHash: string;
+  readonly slug: string;
+};
+
 const HTTP_PROTOCOLS = new Set(["http:", "https:"]);
 export const RSS_CONTENT_TYPE = "application/rss+xml";
 export const RSS_PATH = "/rss.xml";
@@ -15,6 +20,12 @@ export function getSiteUrl(): URL {
     throw new Error(`NEXTAUTH_URL must use HTTP or HTTPS, received ${url.protocol}`);
   }
 
+  return url;
+}
+
+export function createPostOgImageUrl({ slug, sourceHash }: PostOgImageUrlInput): URL {
+  const url = new URL(`/api/og/posts/${encodeURIComponent(slug)}`, getSiteUrl());
+  url.searchParams.set("v", sourceHash);
   return url;
 }
 

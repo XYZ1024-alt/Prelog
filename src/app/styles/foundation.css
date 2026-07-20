@@ -1,50 +1,57 @@
-/* Prelog design foundation: tokens, base elements, shared controls.
-   Visual language: neutral zinc surfaces + single blue accent + clean sans/mono type.
-   Theming follows the OS via light-dark() unless data-theme pins light or dark. */
-
 :root {
-  color-scheme: light dark;
-  --bg: light-dark(#ffffff, #0a0a0a);
-  --surface: light-dark(#ffffff, #141414);
-  --surface-strong: light-dark(#ededeb, #1f1f1f);
-  --surface-soft: light-dark(#f6f6f4, #101010);
-  --text: light-dark(#18181b, #ededed);
-  --text-soft: light-dark(#3f3f46, #b4b4b8);
-  --text-subtle: light-dark(#71717a, #8e8e93);
-  --border: light-dark(#e7e5e4, #232326);
-  --border-strong: light-dark(#d6d3d1, #36363a);
-  --accent: light-dark(#1d4ed8, #2f6feb);
-  --accent-hover: light-dark(#1e40af, #4b83f0);
-  --accent-soft: light-dark(#eef4ff, #101c33);
-  --accent-contrast: #ffffff;
-  --accent-text: light-dark(#1d4ed8, #6ea8fe);
-  --info: light-dark(#1d4ed8, #6ea8fe);
-  --danger: light-dark(#dc2626, #f87171);
-  --danger-soft: light-dark(#fef2f2, #2a1215);
-  --success: light-dark(#16a34a, #4ade80);
-  --warning: light-dark(#b45309, #fbbf24);
-  --radius-sm: 6px;
-  --radius: 10px;
-  --radius-full: 999px;
-  --shadow-sm: light-dark(0 1px 2px rgb(24 24 27 / 0.06), 0 1px 2px rgb(0 0 0 / 0.5));
-  --shadow-md: light-dark(0 4px 12px rgb(24 24 27 / 0.08), 0 4px 12px rgb(0 0 0 / 0.6));
-  --content-max: 1200px;
-  --reading-max: 680px;
+  color-scheme: dark;
+  --bg: #0d0e10;
+  --surface: #15171a;
+  --surface-strong: #1d2024;
+  --surface-soft: #111316;
+  --text: #f4f5f2;
+  --text-soft: #c9cdd3;
+  --text-subtle: #9299a3;
+  --border: #2b2f35;
+  --border-strong: #3a4048;
+  --accent: #6f8cff;
+  --accent-hover: #89a0ff;
+  --accent-soft: #1a2342;
+  --accent-contrast: #111316;
+  --glyph-accent: #b8ef49;
+  --glyph-field: #13170f;
+  --danger: #ff6b73;
+  --danger-soft: #32181c;
+  --success: #5fcf8b;
+  --warning: #e8b451;
+  --radius-sm: 4px;
+  --radius: 6px;
+  --content-max: 1180px;
+  --reading-max: 720px;
   --font-sans: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans SC", "Microsoft YaHei", sans-serif;
-  --font-display: var(--font-sans);
   --font-mono: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
   --motion-fast: 140ms;
-  --motion-ui: 200ms;
-  --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+  --motion-ui: 180ms;
+  --ease-out: cubic-bezier(0.23, 1, 0.32, 1);
   --ease-in-out: cubic-bezier(0.77, 0, 0.175, 1);
 }
 
 :root[data-theme="light"] {
   color-scheme: light;
-}
-
-:root[data-theme="dark"] {
-  color-scheme: dark;
+  --bg: #f7f7f5;
+  --surface: #ffffff;
+  --surface-strong: #eff1f3;
+  --surface-soft: #f3f4f5;
+  --text: #17181a;
+  --text-soft: #454a51;
+  --text-subtle: #6a7079;
+  --border: #dde0e4;
+  --border-strong: #c9cdd2;
+  --accent: #2457ff;
+  --accent-hover: #1747df;
+  --accent-soft: #e9eeff;
+  --accent-contrast: #ffffff;
+  --glyph-accent: #527200;
+  --glyph-field: #eef1e9;
+  --danger: #d63c48;
+  --danger-soft: #fff0f1;
+  --success: #237a49;
+  --warning: #9a6500;
 }
 
 * {
@@ -61,8 +68,6 @@ body {
   background: var(--bg);
   color: var(--text);
   font-family: var(--font-sans);
-  /* next/font pins --font-sans on body; resolve display type from it here. */
-  --font-display: var(--font-sans);
   letter-spacing: 0;
   margin: 0;
   min-height: 100dvh;
@@ -107,13 +112,8 @@ input:focus-visible,
 select:focus-visible,
 textarea:focus-visible,
 [tabindex]:focus-visible {
-  outline: 2px solid var(--accent-text);
+  outline: 2px solid var(--accent);
   outline-offset: 3px;
-}
-
-::selection {
-  background: var(--accent);
-  color: var(--accent-contrast);
 }
 
 .sr-only,
@@ -126,20 +126,18 @@ textarea:focus-visible,
   width: 1px;
 }
 
-/* Kicker: small accent label used sparingly above headings. */
 .eyebrow,
 .index-kicker {
   align-items: center;
-  color: var(--accent-text);
+  color: var(--accent);
   display: inline-flex;
-  font-size: 13px;
-  font-weight: 600;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  font-weight: 700;
   gap: 8px;
-  letter-spacing: 0.02em;
   line-height: 1.5;
 }
 
-/* Buttons */
 .icon-button,
 .button {
   align-items: center;
@@ -149,9 +147,6 @@ textarea:focus-visible,
   display: inline-flex;
   justify-content: center;
   transition:
-    background-color var(--motion-ui) var(--ease-out),
-    border-color var(--motion-ui) var(--ease-out),
-    color var(--motion-ui) var(--ease-out),
     opacity var(--motion-ui) var(--ease-out),
     transform var(--motion-fast) var(--ease-out);
 }
@@ -184,7 +179,6 @@ textarea:focus-visible,
 .button--primary {
   background: var(--accent);
   border-color: var(--accent);
-  box-shadow: var(--shadow-sm);
   color: var(--accent-contrast);
 }
 
@@ -199,7 +193,6 @@ textarea:focus-visible,
   color: var(--danger);
 }
 
-/* Theme toggle */
 .theme-toggle {
   width: 40px;
 }
@@ -211,28 +204,31 @@ textarea:focus-visible,
 
 .theme-toggle__icon {
   grid-area: 1 / 1;
-  opacity: 0;
-  transform: rotate(-10deg) scale(0.94);
   transition:
     opacity var(--motion-ui) var(--ease-out),
     transform var(--motion-ui) var(--ease-out);
 }
 
-/* No data-theme means the site follows the OS theme. */
-.theme-toggle__icon--system,
-:root[data-theme="light"] .theme-toggle__icon--sun,
-:root[data-theme="dark"] .theme-toggle__icon--moon {
+.theme-toggle__icon--sun {
+  opacity: 0;
+  transform: rotate(-10deg) scale(0.94);
+}
+
+.theme-toggle__icon--moon {
   opacity: 1;
   transform: rotate(0) scale(1);
 }
 
-:root[data-theme="light"] .theme-toggle__icon--system,
-:root[data-theme="dark"] .theme-toggle__icon--system {
+:root[data-theme="light"] .theme-toggle__icon--sun {
+  opacity: 1;
+  transform: rotate(0) scale(1);
+}
+
+:root[data-theme="light"] .theme-toggle__icon--moon {
   opacity: 0;
   transform: rotate(10deg) scale(0.94);
 }
 
-/* Button pending state */
 .button__spinner {
   animation: button-spinner 0.7s linear infinite;
   border: 2px solid currentColor;
@@ -274,7 +270,6 @@ textarea:focus-visible,
   }
 }
 
-/* Forms */
 label {
   color: var(--text-soft);
   display: grid;
@@ -308,7 +303,7 @@ input:focus,
 select:focus,
 textarea:focus {
   border-color: var(--accent);
-  box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 18%, transparent);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 16%, transparent);
 }
 
 input::placeholder,
@@ -349,7 +344,6 @@ textarea::placeholder {
   padding: 22px;
 }
 
-/* Tags: soft neutral pills. */
 .tag-row {
   display: flex;
   flex-wrap: wrap;
@@ -360,18 +354,41 @@ textarea::placeholder {
   align-items: center;
   background: var(--surface-soft);
   border: 1px solid var(--border);
-  border-radius: var(--radius-full);
+  border-radius: 999px;
   color: var(--text-soft);
   display: inline-flex;
   font-size: 12px;
-  font-weight: 600;
+  font-weight: 650;
   line-height: 1;
   min-height: 32px;
-  padding: 0 12px;
+  padding: 0 11px;
   white-space: nowrap;
 }
 
-/* Markdown body */
+.article-glyph {
+  color: inherit;
+  font-family: var(--font-mono);
+  margin: 0;
+  pointer-events: none;
+  user-select: none;
+  white-space: pre;
+}
+
+.article-glyph--thumbnail {
+  font-size: 7px;
+  line-height: 7px;
+}
+
+.article-glyph--feature {
+  font-size: 9px;
+  line-height: 9px;
+}
+
+.article-glyph--social {
+  font-size: 5px;
+  line-height: 5px;
+}
+
 .markdown-body {
   color: var(--text-soft);
   font-size: 18px;
@@ -412,8 +429,8 @@ textarea::placeholder {
 }
 
 .markdown-body a {
-  color: var(--info);
-  font-weight: 650;
+  color: var(--accent);
+  font-weight: 700;
   text-decoration: underline;
   text-decoration-thickness: 1px;
   text-underline-offset: 4px;
@@ -440,7 +457,7 @@ textarea::placeholder {
 
 .markdown-body blockquote {
   background: var(--surface-soft);
-  border-left: 2px solid var(--accent);
+  border-left: 3px solid var(--accent);
   color: var(--text);
   margin-left: 0;
   margin-right: 0;
@@ -478,18 +495,17 @@ textarea::placeholder {
   padding: 2px 5px;
 }
 
-/* Code blocks stay dark in both themes for terminal contrast. */
 .code-block {
-  background: #0a0a0c;
-  border: 1px solid #26262c;
-  border-radius: var(--radius);
-  color: #f2f4ef;
+  background: #101217;
+  border: 1px solid #282d36;
+  border-radius: var(--radius-sm);
+  color: #f4f5f2;
   overflow: hidden;
 }
 
 .code-block__head {
   align-items: center;
-  border-bottom: 1px solid #26262c;
+  border-bottom: 1px solid #282d36;
   display: flex;
   justify-content: space-between;
   min-height: 40px;
@@ -497,11 +513,9 @@ textarea::placeholder {
 }
 
 .code-block__head > span:not(.sr-only) {
-  color: #9aa3af;
-  font-family: var(--font-mono);
+  color: #aeb5c0;
   font-size: 11px;
   font-weight: 700;
-  letter-spacing: 0.08em;
   text-transform: uppercase;
 }
 
@@ -610,7 +624,6 @@ textarea::placeholder {
   border-bottom: 0;
 }
 
-/* Global error surface */
 .global-error {
   margin: 0 auto;
   max-width: 680px;
@@ -669,7 +682,7 @@ textarea::placeholder {
   }
 }
 
-@media (max-width: 768px) {
+@media (max-width: 720px) {
   .form-grid {
     grid-template-columns: 1fr;
   }

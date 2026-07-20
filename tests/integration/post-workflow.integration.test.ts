@@ -1,5 +1,6 @@
 import { randomUUID } from "node:crypto";
 
+import { Prisma } from "@/generated/prisma/client";
 import { afterEach, describe, expect, test, vi } from "vitest";
 
 vi.mock("next/cache", () => ({
@@ -12,12 +13,15 @@ vi.mock("@/lib/session", () => ({ requireAdmin: vi.fn().mockResolvedValue({}) })
 import {
   createPostPreviewLink,
   deletePostWithState,
+  regeneratePostGlyphCover,
+  regeneratePostGlyphCoverWithState,
   restorePostRevision,
   togglePostStatus,
   togglePostStatusWithState,
   updatePost,
   updatePostWithState,
 } from "@/app/admin/posts/actions";
+import { createPrelogEngineRecipe, glyphRecipeSchema } from "@/lib/glyph-recipe";
 import { hashPostPreviewToken } from "@/lib/post-preview";
 import { createPostRevisionSnapshot, toRevisionJson } from "@/lib/post-revisions";
 import { POST_WRITE_CONFLICT_MESSAGE } from "@/lib/post-workflow";
@@ -111,8 +115,17 @@ describe("post workflow integration", () => {
     expect(await prisma.post.findUnique({ where: { id: post.id } })).not.toBeNull();
   });
 
-  test("publishes a draft through toggle without touching its content", async () => {
-    const post = await createWorkflowPost();
+  test("keeps a valid legacy Glyph recipe when a draft is republished", async () => {
+    const created = await createWorkflowPost();
+    const legacyRecipe = createPrelogEngineRecipe();
+    const post = await prisma.post.update({
+      data: {
+        glyphGeneratedAt: new Date("2026-07-13T08:00:00.000Z"),
+        glyphRecipe: legacyRecipe as unknown as Prisma.InputJsonValue,
+        glyphSourceHash: legacyRecipe.sourceHash,
+      },
+      where: { id: created.id },
+    });
     const formData = createIdForm(post.id);
     formData.set("expectedUpdatedAt", post.updatedAt.toISOString());
 
@@ -120,25 +133,141 @@ describe("post workflow integration", () => {
 
     const published = await prisma.post.findUniqueOrThrow({ where: { id: post.id } });
     expect(published.status).toBe("PUBLISHED");
-    expect(published.publishedAt).not.toBeNull();
-    expect(published.content).toBe(post.content);
+    expect(published.glyphSourceHash).toBe(legacyRecipe.sourceHash);
+    expect(published.glyphRecipe).toMatchObject({ version: legacyRecipe.version });
   });
 
-  test("updates a post through the editor form and records a revision", async () => {
-    const post = await createWorkflowPost();
+  test("restores a valid legacy Glyph recipe after a manual cover override", async () => {
+    const created = await createWorkflowPost();
+    const legacyRecipe = createPrelogEngineRecipe();
+    const post = await prisma.post.update({
+      data: {
+        coverImage: "https://cdn.example.com/manual.png",
+        coverMode: "MANUAL",
+        glyphGeneratedAt: new Date("2026-07-13T08:00:00.000Z"),
+        glyphRecipe: legacyRecipe as unknown as Prisma.InputJsonValue,
+        glyphSourceHash: legacyRecipe.sourceHash,
+        publishedAt: new Date("2026-07-13T08:00:00.000Z"),
+        status: "PUBLISHED",
+      },
+      where: { id: created.id },
+    });
     const formData = createPostForm(post, post.updatedAt);
-    formData.set("title", "Updated title");
+    formData.set("coverMode", "GLYPH");
     formData.set("status", "PUBLISHED");
 
     await updatePost(formData);
 
-    const [stored, revisionCount] = await Promise.all([
+    const restored = await prisma.post.findUniqueOrThrow({ where: { id: post.id } });
+    expect(restored.coverMode).toBe("GLYPH");
+    expect(restored.glyphSourceHash).toBe(legacyRecipe.sourceHash);
+    expect(restored.glyphRecipe).toMatchObject({ version: legacyRecipe.version });
+  });
+
+  test("repairs an invalid published Glyph while preserving a non-restorable audit snapshot", async () => {
+    const created = await createWorkflowPost();
+    const post = await prisma.post.update({
+      data: {
+        glyphRecipe: Prisma.DbNull,
+        glyphSourceHash: null,
+        publishedAt: new Date("2026-07-13T08:00:00.000Z"),
+        status: "PUBLISHED",
+      },
+      where: { id: created.id },
+    });
+    const formData = createIdForm(post.id);
+    formData.set("expectedUpdatedAt", post.updatedAt.toISOString());
+
+    await regeneratePostGlyphCover(formData);
+
+    const [repaired, revision] = await Promise.all([
       prisma.post.findUniqueOrThrow({ where: { id: post.id } }),
-      prisma.postRevision.count({ where: { postId: post.id } }),
+      prisma.postRevision.findFirstOrThrow({ where: { postId: post.id } }),
     ]);
-    expect(stored.title).toBe("Updated title");
-    expect(stored.status).toBe("PUBLISHED");
-    expect(revisionCount).toBe(1);
+    const recipe = glyphRecipeSchema.parse(repaired.glyphRecipe);
+    expect(repaired.glyphSourceHash).toBe(recipe.sourceHash);
+    expect(revision.snapshot).toMatchObject({ audit: { capturedInvalid: true } });
+  });
+
+  test("returns an explicit navigation target after regenerating a Glyph cover", async () => {
+    const created = await createWorkflowPost();
+    const post = await prisma.post.update({
+      data: {
+        publishedAt: new Date("2026-07-13T08:00:00.000Z"),
+        status: "PUBLISHED",
+      },
+      where: { id: created.id },
+    });
+    const formData = createIdForm(post.id);
+    formData.set("expectedUpdatedAt", post.updatedAt.toISOString());
+
+    const result = await regeneratePostGlyphCoverWithState({ status: "idle" }, formData);
+
+    expect(result).toEqual({
+      href: expect.stringMatching(`/posts/${post.id}/edit\\?cover=regenerated$`),
+      status: "success",
+    });
+  });
+
+  test("keeps the public modification time when regenerating a hidden manual-cover Glyph", async () => {
+    const created = await createWorkflowPost();
+    const post = await prisma.post.update({
+      data: {
+        coverImage: "https://cdn.example.com/manual.png",
+        coverMode: "MANUAL",
+        publishedAt: new Date("2026-07-13T08:00:00.000Z"),
+        status: "PUBLISHED",
+      },
+      where: { id: created.id },
+    });
+    const formData = createIdForm(post.id);
+    formData.set("expectedUpdatedAt", post.updatedAt.toISOString());
+
+    await regeneratePostGlyphCoverWithState({ status: "idle" }, formData);
+
+    const regenerated = await prisma.post.findUniqueOrThrow({ where: { id: post.id } });
+    expect(regenerated.glyphSourceHash).toMatch(/^[0-9a-f]{16}$/);
+    expect(regenerated.updatedAt).toEqual(post.updatedAt);
+  });
+
+  test("can replace an invalid legacy manual cover URL", async () => {
+    const created = await createWorkflowPost();
+    const post = await prisma.post.update({
+      data: {
+        coverImage: "http://legacy.example.com/cover.png",
+        coverMode: "MANUAL",
+        publishedAt: new Date("2026-07-13T08:00:00.000Z"),
+        status: "PUBLISHED",
+      },
+      where: { id: created.id },
+    });
+    const formData = createPostForm(post, post.updatedAt);
+    formData.set("coverImage", "https://cdn.example.com/repaired.png");
+    formData.set("coverMode", "MANUAL");
+    formData.set("status", "PUBLISHED");
+
+    await updatePost(formData);
+
+    const [repaired, revision] = await Promise.all([
+      prisma.post.findUniqueOrThrow({ where: { id: post.id } }),
+      prisma.postRevision.findFirstOrThrow({ where: { postId: post.id } }),
+    ]);
+    expect(repaired.coverImage).toBe("https://cdn.example.com/repaired.png");
+    expect(revision.snapshot).toMatchObject({ audit: { capturedInvalid: true } });
+  });
+
+  test("returns manual cover validation errors to the editor action state", async () => {
+    const post = await createWorkflowPost();
+    const formData = createPostForm(post, post.updatedAt);
+    formData.set("coverImage", "http://legacy.example.com/cover.png");
+    formData.set("coverMode", "MANUAL");
+
+    const result = await updatePostWithState({ status: "idle" }, formData);
+
+    expect(result).toMatchObject({ status: "error" });
+    if (result.status === "error") {
+      expect(result.message).toContain("HTTPS");
+    }
   });
 
   test("restores historical taxonomy without renaming a shared tag", async () => {
@@ -210,7 +339,12 @@ async function createHistoricalRevision(options: {
   const snapshot = createPostRevisionSnapshot({
     category: null,
     content: "## Historical\n\nHistorical content.",
+    coverImage: null,
+    coverMode: "GLYPH",
     excerpt: "Historical excerpt",
+    glyphGeneratedAt: null,
+    glyphRecipe: null,
+    glyphSourceHash: null,
     publishedAt: null,
     readingMinutes: 1,
     seoDescription: null,
@@ -239,6 +373,8 @@ function createPostForm(post: { readonly id: string; readonly slug: string; read
   formData.set("slug", post.slug);
   formData.set("excerpt", "Stale edit");
   formData.set("content", "## Stale\n\nStale content.");
+  formData.set("coverMode", "GLYPH");
+  formData.set("coverImage", "");
   formData.set("categoryId", "");
   formData.set("tagNames", "");
   formData.set("seoTitle", "");

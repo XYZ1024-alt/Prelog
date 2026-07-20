@@ -10,7 +10,13 @@ const SPACE_PATTERN = /\s+/g;
 const SLUG_TRIM_PATTERN = /^-+|-+$/g;
 const SLUG_UNSAFE_PATTERN = /[^\p{Letter}\p{Number}]+/gu;
 const HAN_CHARACTER_PATTERN = /\p{Script=Han}/u;
+const COMBINING_MARK_PATTERN = /\p{Mark}/gu;
+const ASCII_ALPHANUMERIC_PATTERN = /[a-z0-9]/i;
+const TITLE_INITIAL_FALLBACK = "P";
 const TITLE_SEPARATOR_PATTERN = /^[\s:：,，.。\-–—|·]+/u;
+const TITLE_INITIAL_PINYIN_OVERRIDES = [
+  ["重构", "chong"],
+] as const;
 
 type ArticleDescriptionInput = {
   readonly excerpt: string;
@@ -31,6 +37,47 @@ export function toSlug(input: string): string {
     .toLowerCase()
     .replace(SLUG_UNSAFE_PATTERN, "-")
     .replace(SLUG_TRIM_PATTERN, "");
+}
+
+export function createTitleInitial(title: string) {
+  const normalized = title.normalize("NFKC").trim();
+  const override = findTitlePhraseInitial(normalized);
+
+  if (override) {
+    return override;
+  }
+
+  const entries = pinyin(normalized, { pattern: "first", toneType: "none", type: "all" });
+
+  for (const entry of entries) {
+    const initial = findAsciiInitial(entry.isZh ? entry.first : entry.origin);
+
+    if (initial) {
+      return initial;
+    }
+  }
+
+  return TITLE_INITIAL_FALLBACK;
+}
+
+function findTitlePhraseInitial(value: string) {
+  const contentStart = value.search(/[\p{Letter}\p{Number}]/u);
+
+  if (contentStart === -1) {
+    return null;
+  }
+
+  const content = value.slice(contentStart);
+  const match = TITLE_INITIAL_PINYIN_OVERRIDES.find(([phrase]) => content.startsWith(phrase));
+  return match ? findAsciiInitial(match[1]) : null;
+}
+
+function findAsciiInitial(value: string) {
+  return value
+    .normalize("NFKD")
+    .replace(COMBINING_MARK_PATTERN, "")
+    .match(ASCII_ALPHANUMERIC_PATTERN)?.[0]
+    .toUpperCase() ?? null;
 }
 
 function transliterateHan(input: string): string {

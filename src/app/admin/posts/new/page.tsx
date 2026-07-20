@@ -4,6 +4,7 @@ import { createPostWithState } from "@/app/admin/posts/actions";
 import { PostEditor } from "@/app/admin/posts/post-editor";
 import { prisma } from "@/lib/prisma";
 import { requireAdmin } from "@/lib/session";
+import { getConfiguredManualCoverHosts } from "@/lib/validation";
 
 export const dynamic = "force-dynamic";
 
@@ -17,6 +18,7 @@ export default async function NewPostPage() {
       <PostEditor
         action={createPostWithState}
         categories={categories}
+        manualCoverHosts={getConfiguredManualCoverHosts()}
       />
     </AdminShell>
   );

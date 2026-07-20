@@ -1,7 +1,12 @@
 import bcrypt from "bcryptjs";
 import { PrismaPg } from "@prisma/adapter-pg";
 
-import { PrismaClient } from "../src/generated/prisma/client.ts";
+import { Prisma, PrismaClient } from "../src/generated/prisma/client.ts";
+import {
+  createArticleGlyphRecipe,
+  createArticleGlyphSignals,
+  currentGlyphRecipeSchema,
+} from "../src/lib/glyph-recipe.ts";
 import { ADMIN_USER_ID, DEFAULT_SITE_SETTINGS, SITE_SETTINGS_ID } from "../src/lib/constants.ts";
 import { createExcerpt, estimateReadingMinutes, toSlug } from "../src/lib/text.ts";
 
@@ -99,7 +104,7 @@ async function upsertSamplePost(sample: (typeof samplePosts)[number]) {
   });
   const tags = await Promise.all(sample.tags.map(upsertTag));
 
-  await prisma.post.upsert({
+  const post = await prisma.post.upsert({
     where: { slug: toSlug(sample.title) },
     update: {},
     create: {
@@ -113,7 +118,40 @@ async function upsertSamplePost(sample: (typeof samplePosts)[number]) {
       categoryId: category.id,
       tags: { create: tags.map((tag) => ({ tag: { connect: { id: tag.id } } })) },
     },
+    include: { category: true, tags: { include: { tag: true } } },
   });
+
+  const currentRecipe = currentGlyphRecipeSchema.safeParse(post.glyphRecipe);
+  const hasCurrentRecipe = currentRecipe.success && post.glyphSourceHash === currentRecipe.data.sourceHash;
+
+  if (post.coverMode === "GLYPH" && !hasCurrentRecipe) {
+    const persistedTags = post.tags.map(({ tag }) => tag);
+    const recipe = createArticleGlyphRecipe({
+      category: post.category?.slug ?? null,
+      labels: {
+        category: post.category?.name ?? null,
+        tags: persistedTags.map((tag) => tag.name),
+      },
+      postId: post.id,
+      signals: createArticleGlyphSignals(post.content),
+      tags: persistedTags.map((tag) => tag.slug).sort(),
+      title: post.title,
+    });
+
+    const update = await prisma.post.updateMany({
+      where: { id: post.id, updatedAt: post.updatedAt },
+      data: {
+        glyphGeneratedAt: new Date(),
+        glyphRecipe: recipe as unknown as Prisma.InputJsonValue,
+        glyphSourceHash: recipe.sourceHash,
+        updatedAt: post.updatedAt,
+      },
+    });
+
+    if (update.count !== 1) {
+      throw new Error(`Post changed while seeding its Glyph cover: ${post.id}`);
+    }
+  }
 }
 
 async function upsertTag(name: string) {

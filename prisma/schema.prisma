@@ -17,6 +17,11 @@ enum PostStatus {
   PUBLISHED
 }
 
+enum CoverMode {
+  GLYPH
+  MANUAL
+}
+
 enum CommentStatus {
   PENDING
   APPROVED
@@ -118,6 +123,11 @@ model Post {
   slug             String             @unique
   excerpt          String
   content          String
+  coverImage       String?
+  coverMode        CoverMode          @default(GLYPH)
+  glyphRecipe      Json?
+  glyphSourceHash  String?
+  glyphGeneratedAt DateTime?
   status           PostStatus         @default(DRAFT)
   readingMinutes   Int                @default(1)
   seoTitle         String?

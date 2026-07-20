@@ -120,13 +120,13 @@ jobs:
             cp prisma.config.ts release/prisma.config.ts
           fi
 
-          if [ ! -s .next/deploy-tools/maintenance.mjs ]; then
-            echo "Missing maintenance deployment bundle"
+          if [ ! -s .next/deploy-tools/backfill-glyph-recipes.mjs ]; then
+            echo "Missing Glyph backfill deployment bundle"
             exit 1
           fi
 
           mkdir -p release/deploy-tools
-          cp .next/deploy-tools/maintenance.mjs release/deploy-tools/
+          cp .next/deploy-tools/backfill-glyph-recipes.mjs release/deploy-tools/
 
           node <<'NODE' > prisma-release-packages.txt
           const fs = require("fs");
@@ -303,8 +303,8 @@ jobs:
             exit 1
           fi
 
-          if [ ! -s deploy-tools/maintenance.mjs ]; then
-            echo "Maintenance deployment bundle is missing from the release"
+          if [ ! -s deploy-tools/backfill-glyph-recipes.mjs ]; then
+            echo "Glyph backfill deployment bundle is missing from the release"
             exit 1
           fi
 
@@ -352,6 +352,8 @@ jobs:
           echo "Current prisma.config.ts:"
           sed -n '1,30p' prisma.config.ts
 
+          NODE_ENV=production node deploy-tools/backfill-glyph-recipes.mjs --preflight
+
           APP_STOPPED=0
 
           rollback_previous_release() {
@@ -379,6 +381,7 @@ jobs:
           fi
 
           node node_modules/prisma/build/index.js migrate deploy --config ./prisma.config.ts
+          NODE_ENV=production node deploy-tools/backfill-glyph-recipes.mjs
 
           ln -sfn "$RELEASE_DIR" "$CURRENT_LINK"
           cd "$CURRENT_LINK"
@@ -404,7 +407,7 @@ jobs:
           "$PM2_BIN" save
           APP_STOPPED=0
           trap - EXIT
-          NODE_ENV=production node deploy-tools/maintenance.mjs
+          NODE_ENV=production node deploy-tools/backfill-glyph-recipes.mjs --maintenance
 
           rm -f "$REMOTE_TAR"
 

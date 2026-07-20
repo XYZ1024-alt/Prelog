@@ -5,7 +5,7 @@ import { ArticleHero } from "@/components/article-hero";
 import { ArticleToc } from "@/components/article-toc";
 import { MarkdownContent } from "@/components/markdown-content";
 import { getMarkdownHeadings } from "@/lib/markdown-headings";
-import { hashPostPreviewToken } from "@/lib/post-preview";
+import { hashPostPreviewToken, resolvePostPreviewCover } from "@/lib/post-preview";
 import { prisma } from "@/lib/prisma";
 import { createArticleDescription, stripLeadingTitleHeading } from "@/lib/text";
 
@@ -38,6 +38,7 @@ export default async function PostPreviewPage({ params }: PreviewPageProps) {
       <ArticleHero
         category={post.category}
         commentCount={0}
+        cover={resolvePostPreviewCover(post)}
         excerpt={createArticleDescription({ excerpt: post.excerpt, title: post.title })}
         publishedAt={post.publishedAt}
         readingMinutes={post.readingMinutes}

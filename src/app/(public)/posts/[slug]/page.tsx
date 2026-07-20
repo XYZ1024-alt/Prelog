@@ -8,12 +8,13 @@ import { ArticleHero } from "@/components/article-hero";
 import { ArticleToc } from "@/components/article-toc";
 import { MarkdownContent } from "@/components/markdown-content";
 import { getMarkdownHeadings } from "@/lib/markdown-headings";
+import { resolvePostCover } from "@/lib/post-cover";
 import {
   getPublishedPostBySlug,
   getPublishedPostNavigation,
   getRelatedPublishedPosts,
 } from "@/lib/posts";
-import { createPageMetadataAlternates, createSiteUrl } from "@/lib/site-url";
+import { createPageMetadataAlternates, createPostOgImageUrl, createSiteUrl } from "@/lib/site-url";
 import { createArticleDescription, stripLeadingTitleHeading } from "@/lib/text";
 
 type PageProps = {
@@ -43,7 +44,8 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   }
 
   const description = post.seoDescription ?? createArticleDescription({ excerpt: post.excerpt, title: post.title });
-  const imageUrl = getPublicCoverImageUrl(post.slug);
+  const cover = resolvePostCover(post);
+  const imageUrl = getPublicCoverImageUrl(cover, post.slug);
 
   return {
     alternates: createPageMetadataAlternates(`/posts/${encodeURIComponent(post.slug)}`),
@@ -80,7 +82,8 @@ export default async function PostPage({ params }: PageProps) {
   const articleHeadings = getMarkdownHeadings(articleContent);
   const articleDeck = createArticleDescription({ excerpt: post.excerpt, title: post.title });
   const description = post.seoDescription ?? articleDeck;
-  const imageUrl = getPublicCoverImageUrl(post.slug);
+  const cover = resolvePostCover(post);
+  const imageUrl = getPublicCoverImageUrl(cover, post.slug);
   const [navigation, relatedPosts] = await Promise.all([
     getPublishedPostNavigation(post.id),
     getRelatedPublishedPosts({
@@ -110,6 +113,7 @@ export default async function PostPage({ params }: PageProps) {
       <ArticleHero
         category={post.category}
         commentCount={post.comments.length}
+        cover={cover}
         excerpt={articleDeck}
         publishedAt={post.publishedAt}
         readingMinutes={post.readingMinutes}
@@ -256,6 +260,8 @@ function serializeStructuredData(value: ReturnType<typeof createStructuredData>)
   return JSON.stringify(value).replaceAll("<", "\\u003c");
 }
 
-function getPublicCoverImageUrl(slug: string) {
-  return createSiteUrl(`/api/og/posts/${encodeURIComponent(slug)}`);
+function getPublicCoverImageUrl(cover: ReturnType<typeof resolvePostCover>, slug: string) {
+  return cover.mode === "MANUAL"
+    ? new URL(cover.imageUrl)
+    : createPostOgImageUrl({ slug, sourceHash: cover.sourceHash });
 }
