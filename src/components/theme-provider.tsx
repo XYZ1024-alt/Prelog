@@ -1,6 +1,6 @@
 "use client";
 
-import { createContext, useContext, useEffect, useMemo, useState } from "react";
+import { createContext, useContext, useEffect, useMemo, useRef, useState } from "react";
 
 import { useClientMounted } from "@/components/use-client-mounted";
 
@@ -15,10 +15,12 @@ type ThemeContextValue = {
 const STORAGE_KEY = "prelog-theme";
 const ThemeContext = createContext<ThemeContextValue | null>(null);
 const THEME_CYCLE: Record<Theme, Theme> = { dark: "system", light: "dark", system: "light" };
+const THEME_TRANSITION_MS = 350;
 
 export function ThemeProvider({ children }: { children: React.ReactNode }) {
   const [theme, setTheme] = useState<Theme>(() => getInitialTheme());
   const mounted = useClientMounted();
+  const transitionTimer = useRef<number | null>(null);
 
   useEffect(() => {
     if (theme === "system") {
@@ -31,11 +33,33 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     window.localStorage.setItem(STORAGE_KEY, theme);
   }, [theme]);
 
+  useEffect(
+    () => () => {
+      if (transitionTimer.current !== null) {
+        window.clearTimeout(transitionTimer.current);
+      }
+    },
+    [],
+  );
+
   const value = useMemo<ThemeContextValue>(
     () => ({
       theme,
       mounted,
-      toggleTheme: () => setTheme((current) => THEME_CYCLE[current]),
+      toggleTheme: () => {
+        /* Flag the root while colors flip so CSS can run a one-shot color sweep. */
+        if (!window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+          document.documentElement.dataset.themeTransition = "";
+          if (transitionTimer.current !== null) {
+            window.clearTimeout(transitionTimer.current);
+          }
+          transitionTimer.current = window.setTimeout(() => {
+            delete document.documentElement.dataset.themeTransition;
+            transitionTimer.current = null;
+          }, THEME_TRANSITION_MS);
+        }
+        setTheme((current) => THEME_CYCLE[current]);
+      },
     }),
     [mounted, theme],
   );

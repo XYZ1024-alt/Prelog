@@ -124,6 +124,12 @@
   padding: 56px 24px 88px;
 }
 
+@media (prefers-reduced-motion: no-preference) {
+  .page-shell:not(.route-loading) {
+    animation: page-enter 240ms var(--ease-out) both;
+  }
+}
+
 .page-heading {
   border-bottom: 1px solid var(--border);
   max-width: 880px;
@@ -989,6 +995,20 @@
   font-size: 12px;
 }
 
+.writing-index__nav a,
+.index-entry__meta a,
+.index-entry__tags a,
+.index-entry h3 a,
+.post-card__title a,
+.post-card__meta a,
+.taxonomy-index__item strong,
+.search-side-card a,
+.search-result-card h2 a,
+.archive-entry h2 a,
+.archive-entry__meta a {
+  transition: color var(--motion-ui) var(--ease-out);
+}
+
 @media (hover: hover) and (pointer: fine) {
   .friend-link:hover .friend-link__title svg {
     color: var(--accent-text);
@@ -1028,6 +1048,59 @@
   .archive-entry > a:active,
   .content-pagination > a:active {
     transform: scale(0.97);
+  }
+
+  /* First-paint stagger for editorial lists; decorative, never blocks input. */
+  @keyframes list-item-enter {
+    from {
+      opacity: 0;
+      transform: translateY(8px);
+    }
+
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  .index-entry,
+  .archive-entry {
+    animation: list-item-enter 240ms var(--ease-out) both;
+  }
+
+  .index-entry:nth-child(2),
+  .archive-entry:nth-child(2) {
+    animation-delay: 40ms;
+  }
+
+  .index-entry:nth-child(3),
+  .archive-entry:nth-child(3) {
+    animation-delay: 80ms;
+  }
+
+  .index-entry:nth-child(4),
+  .archive-entry:nth-child(4) {
+    animation-delay: 120ms;
+  }
+
+  .index-entry:nth-child(5),
+  .archive-entry:nth-child(5) {
+    animation-delay: 160ms;
+  }
+
+  .index-entry:nth-child(6),
+  .archive-entry:nth-child(6) {
+    animation-delay: 200ms;
+  }
+
+  .index-entry:nth-child(7),
+  .archive-entry:nth-child(7) {
+    animation-delay: 240ms;
+  }
+
+  .index-entry:nth-child(n+8),
+  .archive-entry:nth-child(n+8) {
+    animation-delay: 280ms;
   }
 }
 
@@ -1092,11 +1165,11 @@
     position: absolute;
     right: 0;
     top: 100%;
-    transform: translateY(-4px);
+    transform: translateY(-6px);
     transition:
-      opacity var(--motion-fast) var(--ease-out),
-      transform var(--motion-fast) var(--ease-out),
-      visibility 0s linear var(--motion-fast);
+      opacity var(--motion-ui) var(--ease-out),
+      transform var(--motion-ui) var(--ease-out),
+      visibility 0s linear var(--motion-ui);
     visibility: hidden;
   }
 
