@@ -27,7 +27,7 @@ export function PostCard({ post }: { readonly post: PostWithMeta }) {
           </span>
         </div>
         <h2 className="post-card__title">
-          <Link href={`/posts/${post.slug}`}>{post.title}</Link>
+          <Link href={`/posts/${post.slug}`} prefetch>{post.title}</Link>
         </h2>
         <p>{post.excerpt}</p>
         <div className="post-card__foot">

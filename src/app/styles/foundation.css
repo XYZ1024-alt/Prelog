@@ -630,12 +630,6 @@ textarea::placeholder {
   margin: 16px 0 24px;
 }
 
-@keyframes surface-pulse {
-  50% {
-    opacity: 0.52;
-  }
-}
-
 /* One-shot page entrance: fade + slight rise. Only under no-preference. */
 @media (prefers-reduced-motion: no-preference) {
   @keyframes page-enter {

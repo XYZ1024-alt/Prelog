@@ -64,33 +64,6 @@
   width: 100%;
 }
 
-.admin-login__panel--loading {
-  display: grid;
-  gap: 14px;
-}
-
-.admin-login__panel--loading > span:not(.sr-only) {
-  animation: surface-pulse 1.4s var(--ease-in-out) infinite;
-  background: var(--surface-strong);
-  display: block;
-  height: 16px;
-}
-
-.admin-login__panel--loading > span:nth-child(2) {
-  height: 42px;
-  width: 72%;
-}
-
-.admin-login__panel--loading > span:nth-child(3) {
-  width: 88%;
-}
-
-.admin-login__panel--loading > span:nth-child(4) {
-  height: 120px;
-  margin-top: 12px;
-  width: 100%;
-}
-
 /* Shell + rail navigation */
 .admin-shell {
   align-items: start;
@@ -309,37 +282,6 @@
 
 .admin-state .button {
   justify-self: start;
-}
-
-.admin-loading {
-  align-content: start;
-  display: grid;
-  gap: 14px;
-  min-height: 60vh;
-  padding-top: 8vh;
-}
-
-.admin-loading__line,
-.admin-loading__grid {
-  animation: surface-pulse 1.4s var(--ease-in-out) infinite;
-  background: var(--surface-strong);
-  display: block;
-}
-
-.admin-loading__line {
-  height: 16px;
-  max-width: 560px;
-}
-
-.admin-loading__line--title {
-  height: 38px;
-  width: min(420px, 72%);
-}
-
-.admin-loading__grid {
-  height: 260px;
-  margin-top: 18px;
-  width: 100%;
 }
 
 .admin-panel__head {
@@ -1412,11 +1354,5 @@
   .markdown-editor__toolbar button,
   .markdown-editor__status button {
     transition-property: background-color, border-color, color, opacity;
-  }
-
-  .admin-loading__line,
-  .admin-loading__grid,
-  .admin-login__panel--loading > span:not(.sr-only) {
-    animation: none;
   }
 }

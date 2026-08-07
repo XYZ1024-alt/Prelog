@@ -51,10 +51,10 @@ export default async function ArchivePage({ searchParams }: ArchivePageProps) {
                   <span>{post.readingMinutes} 分钟</span>
                   <span>{post._count.comments} 评论</span>
                 </div>
-                <h2><Link href={`/posts/${post.slug}`}>{post.title}</Link></h2>
+                <h2><Link href={`/posts/${post.slug}`} prefetch>{post.title}</Link></h2>
                 <p>{post.excerpt}</p>
               </div>
-              <Link aria-label={`阅读 ${post.title}`} href={`/posts/${post.slug}`}>
+              <Link aria-label={`阅读 ${post.title}`} href={`/posts/${post.slug}`} prefetch>
                 <ArrowUpRight size={20} />
               </Link>
             </li>

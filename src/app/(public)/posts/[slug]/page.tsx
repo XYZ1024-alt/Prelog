@@ -146,10 +146,10 @@ function RelatedReading({ items }: { readonly items: readonly RelatedPostItem[] 
           <li key={post.id}>
             <div>
               <span>{createRelationLabel(post, relevance)}</span>
-              <h3><Link href={`/posts/${post.slug}`}>{post.title}</Link></h3>
+              <h3><Link href={`/posts/${post.slug}`} prefetch>{post.title}</Link></h3>
               <p>{post.excerpt}</p>
             </div>
-            <Link aria-label={`阅读 ${post.title}`} href={`/posts/${post.slug}`}>
+            <Link aria-label={`阅读 ${post.title}`} href={`/posts/${post.slug}`} prefetch>
               <ArrowUpRight size={19} />
             </Link>
           </li>
@@ -192,7 +192,7 @@ function ArticleNavigationLink({
   readonly post: NavigationPost;
 }) {
   return (
-    <Link className="article-navigation__item" href={`/posts/${post.slug}`}>
+    <Link className="article-navigation__item" href={`/posts/${post.slug}`} prefetch>
       <span className="article-navigation__direction">
         {direction === "previous" ? <ArrowLeft size={18} /> : null}
         {label}

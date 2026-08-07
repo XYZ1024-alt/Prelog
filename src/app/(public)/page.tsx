@@ -112,7 +112,7 @@ function IndexEntry({ index, post }: { readonly index: number; readonly post: Pu
           <span>{post.readingMinutes} 分钟</span>
         </div>
         <h3>
-          <Link href={`/posts/${post.slug}`}>{post.title}</Link>
+          <Link href={`/posts/${post.slug}`} prefetch>{post.title}</Link>
         </h3>
         <p>{post.excerpt}</p>
         <div className="index-entry__tags">
@@ -121,7 +121,7 @@ function IndexEntry({ index, post }: { readonly index: number; readonly post: Pu
           ))}
         </div>
       </div>
-      <Link aria-label={`阅读 ${post.title}`} className="index-entry__arrow" href={`/posts/${post.slug}`}>
+      <Link aria-label={`阅读 ${post.title}`} className="index-entry__arrow" href={`/posts/${post.slug}`} prefetch>
         <ArrowUpRight size={21} />
       </Link>
     </li>
