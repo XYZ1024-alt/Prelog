@@ -6,7 +6,7 @@ Prelog is a Next.js 16 and React 19 application written in strict TypeScript. Ap
 
 ## Build, Test, and Development Commands
 
-Use Node.js 24 (the CI version) and npm.
+Use Node.js 24.22.1 (pinned in `.nvmrc`, used by CI and production) and npm.
 
 - `npm ci`: install exactly from `package-lock.json`.
 - `npm run dev`: start the local Next.js development server.

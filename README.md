@@ -240,7 +240,7 @@ Start Command: npx next start
 
 服务器前置条件：
 
-- 已安装 Node.js 24 或兼容版本。
+- 已安装 Node.js 24.22.1 或更高版本（与仓库根目录的 `.nvmrc` 一致，可使用 `nvm install` / `nvm use` 切换）。部署脚本会校验服务器 Node 版本，并通过 PM2 `interpreter` 让应用始终使用部署时选定的 Node，不依赖 PM2 daemon 自身的版本。
 - 已安装 PM2。
 - 已安装 `tar`、`bash`、`ssh` 等基础命令。
 - 服务器可以访问生产 PostgreSQL。
